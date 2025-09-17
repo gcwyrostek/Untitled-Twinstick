@@ -1,5 +1,4 @@
 # Untitled Survival Shooter
-
 by Team Blueberry
 
 ## Team Members
@@ -13,7 +12,7 @@ by Team Blueberry
 	* mrk161: Matthew Kindja
 	* haw102: Hao Wang
 	* dva8: Daniel Aleardi
-	* xxx000: Vlad (need full name and Pitt ID)
+	* vlb56: Vladyslav Bordia
 
 ## Game Description
 
@@ -25,26 +24,39 @@ Players must locate batteries to keep their lights on, or face certain death in 
 
 ### Multiplayer Networking
 
-DESCRIPTIONHERE
-    
+Our multiplayer networking implementation will synchronize the actions of up to 4 players across the network.
+One client player will also assume the role of the host. Clients will transmit actions to the server, which
+will resolve conflicts, simulate the world, and send state updates.
+
 ### Lighting Systems
 
-DESCRIPTIONHERE
+Dynamic 2D lighting will be implemented to provide a more interesting game atmosphere and add an element of
+resource/vision management to the mastery curve. Moving light sources, different light colors and color 
+blending, and different types of light sources (point, spotlight) will be implemented.
 
 ## Midterm Goals
 
-* GOAL1HERE
-* GOAL2HERE
-...
+* Player 4-direction movement
+* Player orients toward cursor
+* Player shooting
+* Enemies die when attacked
+* Enemy type that moves in straight line toward player
+* Players die when colliding with enemies
+* Phong lighting implementation
+* Point and cone lights illuminate enviornment withing radius
+* Server and client connection
 
 ## Final Goals
 
-* XX%: GOAL1HERE
-* XX%: GOAL2HERE
-* XX%: GOAL3HERE
-...
+* 15%: Players collide with surface
+* 05%: Players open/close doors
+* 30%: Complete level with fixed obstacles and enemy placements
+* 05%: Win state: all players reach the end of the level
+* 05%: Lose state: all players are simultaneously dead
+* 10%: Signed-distance-field enabled shadows cast by 2D objects
+* 10%: Player input data recording and server validation (lag compensation)
 
 ## Stretch Goals
 
-* GOAL1HERE
-* GOAL2HERE
+* G-buffer enabled deferred rendering approach
+* Enemies pathfind to players
