@@ -30,13 +30,13 @@ will resolve conflicts, simulate the world, and send state updates.
 
 ### Lighting Systems
 
-Dynamic 2D lighting will be implemented to provide a more interesting game atmosphere and add an element of
-resource/vision management to the mastery curve. Moving light sources, different light colors and color 
-blending, and different types of light sources (point, spotlight) will be implemented.
+There will be two components to our lighting system: phong lighting and shadow masks.
+* For each on-screen sprite, our phong lighting algorithm will sample orientation data (stored in a normal map) to determine the amount of light reflected for each pixel. As such, each sprite include a corresponding, pre-computed normal map.
+* Crucial to our shadow mask system is the implementation of a signed-distance-field, from which information is pulled to compute screen-space shadow map information.
 
 ## Midterm Goals
 
-* Player 4-direction movement
+* Player 4-direction movement from a top-down perspective
 * Player orients toward cursor
 * Player shooting
 * Enemies die when attacked
@@ -48,15 +48,19 @@ blending, and different types of light sources (point, spotlight) will be implem
 
 ## Final Goals
 
-* 15%: Players collide with surface
-* 05%: Players open/close doors
-* 30%: Complete level with fixed obstacles and enemy placements
+* 10%: 100x100 tile level (Each tile is 64x64 pixels) with 4 distinct buildings that players will venture through toward their goal. Entire level will be composed of 20 handmade tile assets that make up walls, doors, and other props, where at least 10 of which are lit (include normal information).
+* 02%: Batteries will be situated throughout the level, and are collected when a player collides with the item. Playing without a flashlight will cause a sanity value to slowly decrease, killing the player when depleted. Also, a player with a depleted flashlight won't be able to see enemies coming through the darkness.
+* 01%: Revive kits will be situated throughout the level, and are collected during collision. Up to 1 can be held at a time, indicated by a UI element. Revive kits are used at the body of a dead player to restore their life.
+* 01%: Ammunition can be collected, and the current amount is represented by a UI element. Available ammunition is reduced when attacking.
+* 01%: Three enemy types will be present: Balanced, Fast and weak (Comes in groups of up to 5), slow and strong (Rare encounter) At each location, there will be 10 - 30 different instances of enemies.
 * 05%: Win state: all players reach the end of the level
 * 05%: Lose state: all players are simultaneously dead
-* 10%: Signed-distance-field enabled shadows cast by 2D objects
+* 04% Signed distance field implemented
+* 02% Normal maps computed for all lit sprites
+* 04% Phong lighting computer per-pixel for all lit sprites on screen
 * 10%: Player input data recording and server validation (lag compensation)
 
 ## Stretch Goals
 
-* G-buffer enabled deferred rendering approach
-* Enemies pathfind to players
+* Add a G-buffer, which will enable a more efficient deferred rendering approach
+* Add an enemy that pathfinds toward the players
