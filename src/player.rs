@@ -1,9 +1,6 @@
-use bevy::{prelude::*, window::PresentMode};
+use bevy::prelude::*;
 
-const TITLE: &str = "untitled survival shooter";
-const WIN_W: f32 = 1280.;
-const WIN_H: f32 = 720.;
-const PLAYER_SIZE: f32 = 32.;
+
 const PLAYER_SPEED: f32 = 300.;
 const ACCEL_RATE: f32 = 3600.;
 
@@ -11,7 +8,7 @@ const ACCEL_RATE: f32 = 3600.;
 pub struct Player;
 
 #[derive(Component, Deref, DerefMut)]
-struct Velocity {
+pub struct Velocity {
     velocity: Vec2,
 }
 

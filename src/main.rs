@@ -1,14 +1,14 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PresentMode};
 
 // Game modules
 mod player;
-mod enemy;
-mod bullet;
-mod reticle;
-mod ground_tiles;
-mod ammo_pickup;
-mod guns;
-mod revive_kit_pickup;
+//mod enemy;
+//mod bullet;
+//mod reticle;
+//mod ground_tiles;
+//mod ammo_pickup;
+//mod guns;
+//mod revive_kit_pickup;
 
 fn main() {
     App::new()
@@ -22,18 +22,7 @@ fn main() {
             ..default()
         }))
         // Core game systems
-        .add_systems(Startup, (
-            player::setup_player
-
-            // more to add here
-           
-        ))
-        .add_systems(Update, (
-            // Player systems
-            player::player_movement
-
-             // more to add here
-            
-        ))
+        .add_systems(Startup, player::setup_player)
+        .add_systems(Update, player::player_movement)
         .run();
 } 
