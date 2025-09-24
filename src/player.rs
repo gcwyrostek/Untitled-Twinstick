@@ -1,0 +1,75 @@
+use bevy::{prelude::*, window::PresentMode};
+
+const TITLE: &str = "untitled survival shooter";
+const WIN_W: f32 = 1280.;
+const WIN_H: f32 = 720.;
+const PLAYER_SIZE: f32 = 32.;
+const PLAYER_SPEED: f32 = 300.;
+const ACCEL_RATE: f32 = 3600.;
+
+#[derive(Component)]
+pub struct Player;
+
+#[derive(Component, Deref, DerefMut)]
+struct Velocity {
+    velocity: Vec2,
+}
+
+impl Velocity {
+    fn new() -> Self {
+        Self {
+            velocity: Vec2::ZERO,
+        }
+    }
+}
+
+pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2d);
+    
+    commands.spawn((
+        Sprite::from_image(asset_server.load("player/blueberryman.png")),
+        Transform::from_scale(Vec3::splat(0.5)), // Scale down the image if needed
+        Velocity::new(),
+        Player,
+    ));
+}
+
+pub fn player_movement(
+    time: Res<Time>,
+    input: Res<ButtonInput<KeyCode>>,
+    player: Single<(&mut Transform, &mut Velocity), With<Player>>,
+) {
+    let (mut transform, mut velocity) = player.into_inner();
+
+    let mut dir = Vec2::ZERO;
+
+    if input.pressed(KeyCode::KeyA) {
+        dir.x -= 1.;
+    }
+
+    if input.pressed(KeyCode::KeyD) {
+        dir.x += 1.;
+    }
+
+    if input.pressed(KeyCode::KeyW) {
+        dir.y += 1.;
+    }
+
+    if input.pressed(KeyCode::KeyS) {
+        dir.y -= 1.;
+    }
+
+    let deltat = time.delta_secs();
+    let accel = ACCEL_RATE * deltat;
+
+    **velocity = if dir.length() > 0. {
+        (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+    } else if velocity.length() > accel {
+        **velocity + (velocity.normalize_or_zero() * -accel)
+    } else {
+        Vec2::ZERO
+    };
+    let change = **velocity * deltat;
+
+    transform.translation += change.extend(0.);
+} 
