@@ -1,0 +1,114 @@
+use bevy::prelude::*;
+use crate::player::Player;
+
+// Stats for different enemy types!
+const NORMAL_SPEED: f32 = 300.;
+const STRONG_SPEED: f32 = 100.;
+const FAST_SPEED: f32 = 600.;
+
+const NORMAL_HEALTH: i32 = 100;
+const STRONG_HEALTH: i32 = 500;
+const FAST_HEALTH: i32 = 50;
+
+const ACCEL_RATE: f32 = 10000.;
+
+#[derive(Component)]
+pub struct Enemy {
+    enemy_type: EnemyType,
+    enemy_speed: f32
+}
+
+impl Enemy {
+    fn new(enemy_type: EnemyType) -> Enemy {
+        let enemy_speed = match enemy_type {
+            EnemyType::Normal => NORMAL_SPEED,
+            EnemyType::Strong => STRONG_SPEED,
+            EnemyType::Fast => FAST_SPEED,
+        };
+        Enemy {enemy_type, enemy_speed}
+    }
+}
+
+enum EnemyType {
+    Normal,
+    Strong,
+    Fast
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct Velocity {
+    velocity: Vec2,
+}
+
+impl Velocity {
+    fn new() -> Self {
+        Self {
+            velocity: Vec2::ZERO,
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Health {
+    max: i32,
+    current: i32,
+}
+
+impl Health {
+    fn new(max: i32) -> Self {
+        Self {max, current: max}
+    }
+    fn damage(&mut self, amount: i32) -> bool {
+        self.current -= amount;
+        self.current <= 0
+    }
+    fn heal(&mut self, amount: i32) {
+        self.current += amount;
+        if self.current > self.max {
+            self.current = self.max
+        }
+    }
+    fn is_dead(&self) -> bool {
+        self.current <= 0
+    }
+}
+
+pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
+        Transform::from_xyz(0., 0., 10.),
+        Velocity::new(),
+        Enemy::new(EnemyType::Strong),
+        Health::new(STRONG_HEALTH),
+    ));
+}
+
+pub fn enemy_movement(
+    time: Res<Time>,
+    mut params: ParamSet<(
+        Query<(&Enemy, &mut Transform, &mut Velocity), With<Enemy>>,
+        Single<&Transform, With<Player>>,
+    )>,
+) {
+    let player_transform = params.p1().into_inner().clone();
+    for (enemy, mut enemy_transform, mut velocity) in params.p0().iter_mut() {
+        // Create a vector FROM the enemy TO the player target.
+        let mut dir = Vec2::ZERO;
+        dir.x = player_transform.translation.x - enemy_transform.translation.x;
+        dir.y = player_transform.translation.y - enemy_transform.translation.y;
+
+        let deltat = time.delta_secs();
+        let accel = ACCEL_RATE * deltat;
+
+        **velocity = if dir.length() > 0. {
+            (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(enemy.enemy_speed)
+        } else if velocity.length() > accel {
+            **velocity + (velocity.normalize_or_zero() * -accel)
+        } else {
+            Vec2::ZERO
+        };
+        let change = **velocity * deltat;
+
+        enemy_transform.translation += change.extend(0.);
+    }
+} 

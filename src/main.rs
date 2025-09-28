@@ -3,6 +3,7 @@ use bevy::{prelude::*, window::PresentMode};
 // Game modules
 mod player;
 mod tiling;
+mod enemy;
 //mod enemy;
 //mod bullet;
 //mod reticle;
@@ -27,7 +28,9 @@ fn main() {
         }))
         // Core game systems
         .add_systems(Startup, player::setup_player)
+        .add_systems(Startup, enemy::setup_enemy)
         .add_systems(Startup, tiling::setup)
         .add_systems(Update, player::player_movement)
+        .add_systems(Update, enemy::enemy_movement)
         .run();
 } 
