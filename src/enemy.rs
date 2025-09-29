@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use crate::player::Player;
+use crate::projectile::Projectile;
+use std::f32::consts;
 
 // Stats for different enemy types!
 const NORMAL_SPEED: f32 = 300.;
@@ -9,6 +11,8 @@ const FAST_SPEED: f32 = 600.;
 const NORMAL_HEALTH: i32 = 100;
 const STRONG_HEALTH: i32 = 500;
 const FAST_HEALTH: i32 = 50;
+
+const RADIUS: f32 = 50.;
 
 const ACCEL_RATE: f32 = 10000.;
 
@@ -74,13 +78,15 @@ impl Health {
 }
 
 pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
-        Transform::from_xyz(0., 0., 10.),
-        Velocity::new(),
-        Enemy::new(EnemyType::Strong),
-        Health::new(STRONG_HEALTH),
-    ));
+    for i in 0..=9 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
+            Transform::from_xyz(300., (i * 100) as f32, 10.),
+            Velocity::new(),
+            Enemy::new(EnemyType::Strong),
+            Health::new(STRONG_HEALTH),
+        ));
+    }
 }
 
 pub fn enemy_movement(
@@ -110,5 +116,27 @@ pub fn enemy_movement(
         let change = **velocity * deltat;
 
         enemy_transform.translation += change.extend(0.);
+
+        let rotation_z = dir.y.atan2(dir.x);
+        enemy_transform.rotation = Quat::from_rotation_z(rotation_z - consts::PI / 2.);
+    }
+} 
+
+pub fn enemy_damage(
+    mut enemies: Query<(Entity, &Transform, &mut Health), With<Enemy>>,
+    projectiles: Query<&Transform, With<Projectile>>,
+    mut commands: Commands
+) {
+    for (enemy, enemy_transform, mut enemy_health) in enemies.iter_mut() {
+        for (projectile_transform) in projectiles.iter() {
+            let distance = (enemy_transform.translation - projectile_transform.translation).length();
+            if distance > RADIUS {
+                continue;
+            }
+            // Damage, then check if enemy is dead...
+            if enemy_health.damage(10) {
+                commands.entity(enemy).despawn();
+            }
+        }
     }
 } 
