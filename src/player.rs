@@ -1,11 +1,25 @@
 use bevy::prelude::*;
-
+use bevy::time::Timer;
+use bevy::time::TimerMode;
 
 const PLAYER_SPEED: f32 = 300.;
 const ACCEL_RATE: f32 = 3600.;
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Component)]
+pub struct FireCooldown(Timer);
+
+impl FireCooldown {
+    pub fn tick(&mut self, delta: std::time::Duration) -> bool {
+        self.0.tick(delta).finished()
+    }
+
+    pub fn reset(&mut self) {
+        self.0.reset();
+    }
+}
 
 #[derive(Component, Deref, DerefMut)]
 pub struct Velocity {
@@ -27,6 +41,7 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         Sprite::from_image(asset_server.load("player/blueberryman.png")),
         Transform::from_xyz(-300., 0., 10.), // Scale down the image if needed, 1.0 means original size, 2.0 means double size, etc.
         Velocity::new(),
+        FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
     ));
 }

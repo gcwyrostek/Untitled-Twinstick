@@ -1,3 +1,4 @@
+use crate::player::FireCooldown;
 use crate::player::Player;
 use bevy::input::mouse::MouseButton;
 use bevy::input::ButtonInput;
@@ -26,13 +27,11 @@ pub fn projectile_inputs(
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    player_q: Query<&Transform, With<Player>>,
+    mut player_q: Query<(&Transform, &mut FireCooldown), With<Player>>,
+    time: Res<Time>,
     asset_server: Res<AssetServer>,
 ) {
     let not_shooting = !mouse_button_io.pressed(MouseButton::Left);
-    if not_shooting {
-        return;
-    }
 
     let window = match windows.single() {
         Ok(w) => w,
@@ -49,21 +48,24 @@ pub fn projectile_inputs(
     else {
         return;
     };
-    let player_transform = match player_q.single() {
-        Ok(t) => t,
-        Err(_) => return,
+    let (transform, mut cooldown) = match player_q.single_mut() {
+        Ok(v) => v,
+        Err(_) => return, // no or multiple players; bail out safely
     };
-    let projectile_pos = player_transform.translation;
+
+    let projectile_pos = transform.translation;
     let dir = (cursor_world_pos - projectile_pos.truncate()).normalize();
 
-    commands.spawn((
-        Sprite::from_image(asset_server.load("textures/bullet.png")),
+    if !not_shooting && cooldown.tick(time.delta()) {
+        commands.spawn((
+        Sprite::from_image(asset_server.load("textures/bullet.png")),   
         Transform::from_scale(Vec3::splat(0.5)).with_translation(projectile_pos),
         Velocity {
             velocity: dir * PROJECTILE_SPEED,
         },
         Projectile,
     ));
+    }
 }
 
 pub fn projectile_movement(
