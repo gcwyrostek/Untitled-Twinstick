@@ -54,6 +54,7 @@ fn main() {
         .add_systems(Startup, setup_cursor_icon)
         .add_systems(Update, player::player_movement)
         .add_systems(Update, enemy::enemy_movement)
+        .add_systems(Update, enemy::enemy_damage)
         .add_systems(Update, projectile::projectile_inputs)
         .add_systems(Update, projectile::projectile_movement)
         .run();
