@@ -25,7 +25,7 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     
     commands.spawn((
         Sprite::from_image(asset_server.load("player/blueberryman.png")),
-        Transform::from_scale(Vec3::splat(0.5)), // Scale down the image if needed
+        Transform::from_scale(Vec3::splat(1.0)), // Scale down the image if needed, 1.0 means original size, 2.0 means double size, etc.
         Velocity::new(),
         Player,
     ));
