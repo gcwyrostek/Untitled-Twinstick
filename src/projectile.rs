@@ -49,8 +49,8 @@ pub fn projectile_inputs(
         return;
     };
     let (transform, mut cooldown) = match player_q.single_mut() {
-    Ok(v) => v,
-    Err(_) => return, // no or multiple players; bail out safely
+        Ok(v) => v,
+        Err(_) => return, // no or multiple players; bail out safely
     };
 
     let projectile_pos = transform.translation;
