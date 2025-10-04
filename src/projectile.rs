@@ -1,10 +1,18 @@
-use crate::player::FireCooldown;
-use crate::player::Player;
+use bevy::prelude::*;
 use bevy::input::mouse::MouseButton;
 use bevy::input::ButtonInput;
-use bevy::prelude::*;
+use crate::{GameState, player:: Player, player::FireCooldown};
 
 const PROJECTILE_SPEED: f32 = 600.;
+
+pub struct ProjectilePlugin;
+impl Plugin for ProjectilePlugin {
+    fn build(&self, app: &mut App) {
+        app
+        .add_systems(Update, projectile_inputs.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, projectile_movement.run_if(in_state(GameState::Playing)));
+    }
+}
 
 #[derive(Component)]
 pub struct Projectile;

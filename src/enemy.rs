@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use crate::player::Player;
-use crate::projectile::Projectile;
+use crate::{GameState, player::Player, projectile::Projectile};
 use std::f32::consts;
 
 // Stats for different enemy types!
@@ -15,6 +14,16 @@ const FAST_HEALTH: i32 = 50;
 const RADIUS: f32 = 50.;
 
 const ACCEL_RATE: f32 = 10000.;
+
+pub struct EnemyPlugin;
+impl Plugin for EnemyPlugin {
+    fn build(&self, app: &mut App) {
+        app
+        .add_systems(OnEnter(GameState::Playing), setup_enemy)
+        .add_systems(Update, enemy_movement.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)));
+    }
+}
 
 #[derive(Component)]
 pub struct Enemy {
