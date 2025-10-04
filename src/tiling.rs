@@ -1,13 +1,21 @@
 use bevy::{prelude::*};
+use crate::{GameState};
 
 const TILE_SIZE: u32 = 128;
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
 
+pub struct TilingPlugin;
+impl Plugin for TilingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(GameState::Playing), setup_tiling);
+    }
+}
+
 #[derive(Component)]
 struct Tile;
 
-pub fn setup(
+pub fn setup_tiling(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlasLayout>>,
