@@ -14,15 +14,6 @@ impl Plugin for ProjectilePlugin {
     }
 }
 
-pub struct ProjectilePlugin;
-impl Plugin for ProjectilePlugin {
-    fn build(&self, app: &mut App) {
-        app
-        .add_systems(Update, projectile_inputs.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, projectile_movement.run_if(in_state(GameState::Playing)));
-    }
-}
-
 #[derive(Component)]
 pub struct Projectile;
 

@@ -73,7 +73,10 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
+            ui::UIPlugin,
+            Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
         ))
+        .add_event::<events::DamagePlayerEvent>()
         .run();
 }
