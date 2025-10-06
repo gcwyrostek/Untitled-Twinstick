@@ -9,8 +9,10 @@ mod menu;
 mod enemy;
 mod player;
 mod tiling;
-//mod enemy;
 mod projectile;
+mod ui;
+mod components;
+mod events;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -67,6 +69,8 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
+            ui::UIPlugin,
         ))
+        .add_event::<events::DamagePlayerEvent>()
         .run();
 }

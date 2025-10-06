@@ -1,17 +1,21 @@
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
-use crate::{GameState};
+use crate::{GameState,
+            components::Health,
+            events::DamagePlayerEvent,};
 
 const PLAYER_SPEED: f32 = 300.;
 const ACCEL_RATE: f32 = 3600.;
+const MAX_HEALTH: i32 = 100;
 
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_systems(OnEnter(GameState::Playing), setup_player)
-        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)));
+        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -53,6 +57,7 @@ pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         Velocity::new(),
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
+        Health::new(MAX_HEALTH),
     ));
 }
 
@@ -95,3 +100,20 @@ pub fn player_movement(
 
     transform.translation += change.extend(0.);
 } 
+
+pub fn player_damage(
+    mut events: EventReader<DamagePlayerEvent>,
+    mut players: Query<(Entity, &mut Health), With<Player>>,
+    mut commands: Commands,
+) {
+    for damage_event in events.read() {
+        for (player, mut player_health) in players.iter_mut() {
+            if (damage_event.target == player) {
+                player_health.damage(damage_event.amount);
+                if player_health.is_dead() {
+                    commands.entity(player).despawn();
+                }
+            }
+        }
+    }
+}
