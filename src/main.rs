@@ -1,18 +1,20 @@
 use bevy::{
     prelude::*,
+    sprite::Material2dPlugin,
     window::PresentMode,
     winit::cursor::{CursorIcon, CustomCursor, CustomCursorImage},
 };
 
 // Game modules
-mod menu;
-mod enemy;
-mod player;
-mod tiling;
-mod projectile;
-mod ui;
 mod components;
+mod enemy;
 mod events;
+mod menu;
+mod player;
+mod player_material;
+mod projectile;
+mod tiling;
+mod ui;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -70,6 +72,7 @@ fn main() {
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
             ui::UIPlugin,
+            Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
