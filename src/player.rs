@@ -18,6 +18,15 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+pub struct PlayerPlugin;
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app
+        .add_systems(OnEnter(GameState::Playing), setup_player)
+        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)));
+    }
+}
+
 #[derive(Component)]
 pub struct Player;
 

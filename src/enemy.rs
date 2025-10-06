@@ -27,6 +27,8 @@ impl Plugin for EnemyPlugin {
         .add_systems(OnEnter(GameState::Playing), setup_enemy)
         .add_systems(Update, enemy_movement.run_if(in_state(GameState::Playing)))
         .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, all_enemies_defeated.run_if(in_state(GameState::Playing)))
+        .add_systems(OnEnter(GameState::GameOver), display_game_over);
         .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
     }
 }
@@ -144,3 +146,48 @@ pub fn enemy_damage(
         }
     }
 } 
+
+pub fn all_enemies_defeated(
+    all_enemies: Query<&Health, With<Enemy>>,
+    mut next_state: ResMut<NextState<GameState>>
+) {
+    let mut all_enemies_dead = true;
+    for enemy in all_enemies.iter() {
+        if enemy.is_dead() == false {
+            all_enemies_dead = false;
+            break;
+        }
+    }
+    if all_enemies_dead {
+        next_state.set(GameState::GameOver);
+    }
+}
+
+pub fn display_game_over(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>
+) {
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
+            //MenuUI,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("GAME OVER"),
+                TextFont {
+                    font_size: 96.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.0, 0.0)), //red
+            ));
+        });
+}

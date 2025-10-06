@@ -20,6 +20,7 @@ mod ui;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod slideshow;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -30,6 +31,7 @@ enum GameState {
     Menu,
     Playing,
     Credits,
+    GameOver,
 }
 
 fn setup_cursor_icon(
@@ -71,9 +73,7 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
-            ui::UIPlugin,
-            Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
+            slideshow::CreditsPlugin,
         ))
-        .add_event::<events::DamagePlayerEvent>()
         .run();
 }
