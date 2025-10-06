@@ -28,8 +28,8 @@ impl Plugin for EnemyPlugin {
         .add_systems(Update, enemy_movement.run_if(in_state(GameState::Playing)))
         .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
         .add_systems(Update, all_enemies_defeated.run_if(in_state(GameState::Playing)))
-        .add_systems(OnEnter(GameState::GameOver), display_game_over);
-        //.add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
+        .add_systems(OnEnter(GameState::GameOver), display_game_over)
+        .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -73,10 +73,28 @@ pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in 0..=9 {
         commands.spawn((
             Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
-            Transform::from_xyz(300., (i * 100) as f32, 10.),
+            Transform::from_xyz(300., (i * 100) as f32, 10.).with_scale(Vec3::new(1., 1., 1.)),
+            Velocity::new(),
+            Enemy::new(EnemyType::Normal),
+            Health::new(NORMAL_HEALTH),
+        ));
+    }
+    for i in 0..=3 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+            Transform::from_xyz(-1000., (i * 300) as f32, 10.).with_scale(Vec3::new(1.25, 1.25, 1.25)),
             Velocity::new(),
             Enemy::new(EnemyType::Strong),
             Health::new(STRONG_HEALTH),
+        ));
+    }
+    for i in 0..=12 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+            Transform::from_xyz((i * 1000) as f32, 15000., 10.).with_scale(Vec3::new(0.75, 0.75, 0.75)),
+            Velocity::new(),
+            Enemy::new(EnemyType::Fast),
+            Health::new(FAST_HEALTH),
         ));
     }
 }
