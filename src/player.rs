@@ -1,9 +1,9 @@
+use crate::{
+    components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, GameState,
+};
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
-use crate::{GameState,
-            components::Health,
-            events::DamagePlayerEvent,};
 
 const PLAYER_SPEED: f32 = 300.;
 const ACCEL_RATE: f32 = 3600.;
@@ -12,10 +12,9 @@ const MAX_HEALTH: i32 = 100;
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app
-        .add_systems(OnEnter(GameState::Playing), setup_player)
-        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
+        app.add_systems(OnEnter(GameState::Playing), setup_player)
+            .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -48,12 +47,21 @@ impl Velocity {
     }
 }
 
-pub fn setup_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_player(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+    asset_server: Res<AssetServer>,
+) {
     commands.spawn(Camera2d);
-    
+
     commands.spawn((
-        Sprite::from_image(asset_server.load("player/blueberryman.png")),
-        Transform::from_xyz(-300., 0., 10.), // Scale down the image if needed, 1.0 means original size, 2.0 means double size, etc.
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            color: LinearRgba::BLACK,
+            texture: Some(asset_server.load("player/blueberryman.png")),
+        })),
+        Transform::from_xyz(-300., 0., 10.).with_scale(Vec3::splat(32.)), // Scale down the image if needed, 1.0 means original size, 2.0 means double size, etc.
         Velocity::new(),
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
@@ -99,7 +107,7 @@ pub fn player_movement(
     let change = **velocity * deltat;
 
     transform.translation += change.extend(0.);
-} 
+}
 
 pub fn player_damage(
     mut events: EventReader<DamagePlayerEvent>,
