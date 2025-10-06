@@ -17,7 +17,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }
-
+/*
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
@@ -26,6 +26,7 @@ impl Plugin for PlayerPlugin {
         .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)));
     }
 }
+*/
 
 #[derive(Component)]
 pub struct Player;

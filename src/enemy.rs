@@ -29,7 +29,7 @@ impl Plugin for EnemyPlugin {
         .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
         .add_systems(Update, all_enemies_defeated.run_if(in_state(GameState::Playing)))
         .add_systems(OnEnter(GameState::GameOver), display_game_over);
-        .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
+        //.add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
     }
 }
 
