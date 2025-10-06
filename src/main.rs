@@ -1,16 +1,20 @@
 use bevy::{
     prelude::*,
+    sprite::Material2dPlugin,
     window::PresentMode,
     winit::cursor::{CursorIcon, CustomCursor, CustomCursorImage},
 };
 
 // Game modules
-mod menu;
+mod components;
 mod enemy;
+mod events;
+mod menu;
 mod player;
-mod tiling;
-//mod enemy;
+mod player_material;
 mod projectile;
+mod tiling;
+mod ui;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
