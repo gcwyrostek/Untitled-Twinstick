@@ -5,6 +5,7 @@ use bevy::{
 };
 
 // Game modules
+mod menu;
 mod enemy;
 mod player;
 mod tiling;
@@ -15,9 +16,19 @@ mod projectile;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod slideshow;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
+
+#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum GameState {
+    #[default]
+    Menu,
+    Playing,
+    Credits,
+    GameOver,
+}
 
 fn setup_cursor_icon(
     mut commands: Commands,
@@ -47,15 +58,18 @@ fn main() {
             }),
             ..default()
         }))
+        // GameState init
+        .init_state::<GameState>()
         // Core game systems
-        .add_systems(Startup, player::setup_player)
-        .add_systems(Startup, enemy::setup_enemy)
-        .add_systems(Startup, tiling::setup)
         .add_systems(Startup, setup_cursor_icon)
-        .add_systems(Update, player::player_movement)
-        .add_systems(Update, enemy::enemy_movement)
-        .add_systems(Update, enemy::enemy_damage)
-        .add_systems(Update, projectile::projectile_inputs)
-        .add_systems(Update, projectile::projectile_movement)
+        //Plugin Section
+        .add_plugins((
+            menu::MenuPlugin,
+            player::PlayerPlugin,
+            tiling::TilingPlugin,
+            projectile::ProjectilePlugin,
+            enemy::EnemyPlugin,
+            slideshow::CreditsPlugin,
+        ))
         .run();
 }
