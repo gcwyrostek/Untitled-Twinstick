@@ -15,12 +15,14 @@ mod player_material;
 mod projectile;
 mod tiling;
 mod ui;
+mod server;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
 mod slideshow;
+mod game_over;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -76,6 +78,8 @@ fn main() {
             ui::UIPlugin,
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
+            game_over::GameOverPlugin,
+            server::ServerPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
