@@ -1,21 +1,28 @@
 use bevy::{
     prelude::*,
+    sprite::Material2dPlugin,
     window::PresentMode,
     winit::cursor::{CursorIcon, CustomCursor, CustomCursorImage},
 };
 
 // Game modules
-mod menu;
+mod components;
 mod enemy;
+mod events;
+mod menu;
 mod player;
-mod tiling;
-//mod enemy;
+mod player_material;
 mod projectile;
+mod tiling;
+mod ui;
+mod server;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod slideshow;
+mod game_over;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -26,6 +33,7 @@ enum GameState {
     Menu,
     Playing,
     Credits,
+    GameOver,
 }
 
 fn setup_cursor_icon(
@@ -67,6 +75,12 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
+            ui::UIPlugin,
+            Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
+            slideshow::CreditsPlugin,
+            game_over::GameOverPlugin,
+            server::ServerPlugin,
         ))
+        .add_event::<events::DamagePlayerEvent>()
         .run();
 }

@@ -3,7 +3,7 @@ use bevy::input::mouse::MouseButton;
 use bevy::input::ButtonInput;
 use crate::{GameState, player:: Player, player::FireCooldown};
 
-const PROJECTILE_SPEED: f32 = 600.;
+const PROJECTILE_SPEED: f32 = 1000.;
 
 pub struct ProjectilePlugin;
 impl Plugin for ProjectilePlugin {
@@ -67,7 +67,7 @@ pub fn projectile_inputs(
     if !not_shooting && cooldown.tick(time.delta()) {
         commands.spawn((
         Sprite::from_image(asset_server.load("textures/bullet.png")),   
-        Transform::from_scale(Vec3::splat(0.5)).with_translation(projectile_pos),
+        Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
         Velocity {
             velocity: dir * PROJECTILE_SPEED,
         },

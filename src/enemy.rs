@@ -1,5 +1,9 @@
 use bevy::prelude::*;
-use crate::{GameState, player::Player, projectile::Projectile};
+use crate::{GameState,
+            player::Player,
+            projectile::Projectile,
+            components::Health,
+            events::DamagePlayerEvent,};
 use std::f32::consts;
 
 // Stats for different enemy types!
@@ -12,6 +16,7 @@ const STRONG_HEALTH: i32 = 500;
 const FAST_HEALTH: i32 = 50;
 
 const RADIUS: f32 = 50.;
+const ATTACK_RADIUS: f32 = 100.;
 
 const ACCEL_RATE: f32 = 10000.;
 
@@ -21,7 +26,9 @@ impl Plugin for EnemyPlugin {
         app
         .add_systems(OnEnter(GameState::Playing), setup_enemy)
         .add_systems(Update, enemy_movement.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)));
+        .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, all_enemies_defeated.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -61,39 +68,32 @@ impl Velocity {
     }
 }
 
-#[derive(Component)]
-pub struct Health {
-    max: i32,
-    current: i32,
-}
-
-impl Health {
-    fn new(max: i32) -> Self {
-        Self {max, current: max}
-    }
-    fn damage(&mut self, amount: i32) -> bool {
-        self.current -= amount;
-        self.current <= 0
-    }
-    fn heal(&mut self, amount: i32) {
-        self.current += amount;
-        if self.current > self.max {
-            self.current = self.max
-        }
-    }
-    fn is_dead(&self) -> bool {
-        self.current <= 0
-    }
-}
-
 pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in 0..=9 {
         commands.spawn((
             Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
-            Transform::from_xyz(300., (i * 100) as f32, 10.),
+            Transform::from_xyz(300., (i * 100) as f32, 10.).with_scale(Vec3::new(1., 1., 1.)),
+            Velocity::new(),
+            Enemy::new(EnemyType::Normal),
+            Health::new(NORMAL_HEALTH),
+        ));
+    }
+    for i in 0..=3 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+            Transform::from_xyz(-1000., (i * 300) as f32, 10.).with_scale(Vec3::new(1.25, 1.25, 1.25)),
             Velocity::new(),
             Enemy::new(EnemyType::Strong),
             Health::new(STRONG_HEALTH),
+        ));
+    }
+    for i in 0..=12 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+            Transform::from_xyz((i * 1000) as f32, 15000., 10.).with_scale(Vec3::new(0.75, 0.75, 0.75)),
+            Velocity::new(),
+            Enemy::new(EnemyType::Fast),
+            Health::new(FAST_HEALTH),
         ));
     }
 }
@@ -131,13 +131,27 @@ pub fn enemy_movement(
     }
 } 
 
+pub fn enemy_attack(
+    enemies: Query<&Transform, With<Enemy>>,
+    player: Single<(Entity, &Transform), With<Player>>,
+    mut event: EventWriter<DamagePlayerEvent>,
+) {
+    let (player_entity, player_transform) = player.into_inner();
+    for enemy_transform in enemies.iter() {
+        let distance = (enemy_transform.translation - player_transform.translation).length();
+        if distance < ATTACK_RADIUS {
+            event.write(DamagePlayerEvent::new(player_entity, 1));
+        }
+    }
+}
+
 pub fn enemy_damage(
     mut enemies: Query<(Entity, &Transform, &mut Health), With<Enemy>>,
     projectiles: Query<&Transform, With<Projectile>>,
     mut commands: Commands
 ) {
     for (enemy, enemy_transform, mut enemy_health) in enemies.iter_mut() {
-        for (projectile_transform) in projectiles.iter() {
+        for projectile_transform in projectiles.iter() {
             let distance = (enemy_transform.translation - projectile_transform.translation).length();
             if distance > RADIUS {
                 continue;
@@ -149,3 +163,19 @@ pub fn enemy_damage(
         }
     }
 } 
+
+pub fn all_enemies_defeated(
+    all_enemies: Query<&Health, With<Enemy>>,
+    mut next_state: ResMut<NextState<GameState>>
+) {
+    let mut all_enemies_dead = true;
+    for enemy in all_enemies.iter() {
+        if enemy.is_dead() == false {
+            all_enemies_dead = false;
+            break;
+        }
+    }
+    if all_enemies_dead {
+        next_state.set(GameState::GameOver);
+    }
+}
