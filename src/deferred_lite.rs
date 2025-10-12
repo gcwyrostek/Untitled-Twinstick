@@ -1,25 +1,45 @@
-use bevy::ecs::entity::unique_slice::Windows;
+use bevy::ecs::query::QueryItem;
 use bevy::prelude::*;
 use bevy::render::renderer::RenderDevice;
-use bevy::render::texture::TextureCache;
+use bevy::render::texture::{TextureCache, CachedTexture};
 use bevy::render::{
     render_graph::*,
     render_resource::*,
     renderer::RenderContext,
-    ExtractSchedule, RenderApp, Render, RenderSet,
+    RenderApp, Render, RenderSystems,
 };
-use bevy::window::{self, PrimaryWindow, WindowResolution};
-use bevy::core_pipeline::core_2d::graph::Core2d;
+use bevy::window::{PrimaryWindow, Window};
+use bevy::core_pipeline::core_2d::graph::{Core2d, Node2d};
+use bevy::prelude::Color;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
+struct DeferredLiteLabel;
 
 pub struct DeferredLitePlugin;
 
 impl Plugin for DeferredLitePlugin {
     fn build(&self, app: &mut App) {
-        // Getting the reference to the RenderApp
         let render_app = app.sub_app_mut(RenderApp);
 
-        // TODO: will have to figure out how to add the system for the prepare stage of the render pass wihtout using RenderSet
-        // render_app.add_systems(Startup, prepare_normal_render_target.in_set(RenderSet::Prepare));
+        render_app
+            .init_resource::<GBufferLite>()
+            .add_systems(Render, prepare_normal_render_target.in_set(RenderSystems::Prepare));
+
+        // 1) Construct the ViewNodeRunner in its own borrow of the world
+        let node_runner = {
+            let world = render_app.world_mut();
+            ViewNodeRunner::<NormalsNode>::new(NormalsNode::default(), world)
+        };
+
+        // 2) Now borrow the world again to mutate the graph
+        {
+            let mut graph = render_app.world_mut().resource_mut::<RenderGraph>();
+            let core2d = graph.get_sub_graph_mut(Core2d).unwrap();
+
+            core2d.add_node(DeferredLiteLabel, node_runner);
+            // add_node_edge returns (), so don't unwrap/chain
+            core2d.add_node_edge(Node2d::EndMainPass, DeferredLiteLabel);
+        }
     }
 }
 
@@ -28,6 +48,16 @@ struct GBufferLite {
     texture_view: Option<TextureView>,
     size: UVec2,
     format: TextureFormat
+}
+
+impl Default for GBufferLite {
+    fn default() -> Self {
+        Self{
+            texture_view: None,
+            size: UVec2::ZERO,
+            format: TextureFormat::Rgba8Unorm,
+        }
+    }
 }
 
 // gBufRes -> our resource that will hold everything for out render targets such as normals
@@ -40,13 +70,11 @@ fn prepare_normal_render_target(
     render_dev: Res<RenderDevice> 
 ) {
     // Update the size of the window if needed
-    let primary_window = match window.single() {
+    let primary_window: &Window = match window.single() {
         Ok(v) => v,
         Err(_) => return
     };
 
-    // TODO: maybe we can skip
-    // if primary_window.resolution.size() == gbufRes.size {return;}
     gbufRes.size = primary_window.resolution.physical_size();
     gbufRes.format = TextureFormat::Rgba8Unorm;
 
@@ -67,4 +95,41 @@ fn prepare_normal_render_target(
     println!("{}", primary_window.width());
 }
 
-// TODO: need to create a NODE for the render stage of the main pass to handle the normals
+#[derive(Default)]
+struct NormalsNode;
+
+impl ViewNode for NormalsNode {
+    type ViewQuery = ();
+
+    fn run(
+        &self,
+        _graph: &mut RenderGraphContext,
+        render_context: &mut RenderContext,
+        _view: QueryItem<Self::ViewQuery>,
+        world: &World, 
+    ) -> Result<(), NodeRunError> {
+        let gbuf = world.resource::<GBufferLite>();
+        let Some(view) = &gbuf.texture_view else {return Ok(())};
+
+        let mut pass = render_context.command_encoder().begin_render_pass(
+            &RenderPassDescriptor {
+                label: Some("DL Normals Clear"), 
+                color_attachments: &[Some(RenderPassColorAttachment { 
+                    view: view, 
+                    depth_slice: None, 
+                    resolve_target: None, 
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu_types::Color::BLACK),
+                        store: StoreOp::Store,
+                    },
+                })], 
+                depth_stencil_attachment: None, 
+                timestamp_writes: None, 
+                occlusion_query_set: None, }
+        );
+        drop(pass);
+        Ok(())
+    }
+
+
+}
