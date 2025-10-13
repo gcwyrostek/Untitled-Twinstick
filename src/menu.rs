@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
+use std::net::UdpSocket;
 
 #[derive(Component)]
 enum MenuButton {
@@ -203,10 +204,7 @@ fn on_exit_playing() {
 }
 
 fn start_on_input(
-    mut interaction_query: Query<
-        (&Interaction, &MenuButton),
-        (Changed<Interaction>, With<Button>),
-    >,
+    mut interaction_query: Query<(&Interaction, &MenuButton), (Changed<Interaction>, With<Button>)>,
     mut next_state: ResMut<NextState<GameState>>,
     mut exit: EventWriter<bevy::app::AppExit>,
 ) {
@@ -219,6 +217,11 @@ fn start_on_input(
                 }
                 MenuButton::Join => {
                     info!("join button pressed.");
+                    let socket =
+                        UdpSocket::bind("127.0.0.1:24515").expect("couldn't bind to address");
+                    socket
+                        .send_to(&[5; 10], "127.0.0.1:2525")
+                        .expect("couldn't send data");
                 }
                 MenuButton::Credits => {
                     info!("credits button pressed.");

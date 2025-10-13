@@ -13,6 +13,7 @@ mod menu;
 mod player;
 mod player_material;
 mod projectile;
+mod server;
 mod tiling;
 mod ui;
 //mod reticle;
@@ -20,6 +21,7 @@ mod ui;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod game_over;
 mod slideshow;
 
 const WIN_W: f32 = 1280.;
@@ -76,6 +78,8 @@ fn main() {
             ui::UIPlugin,
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
+            game_over::GameOverPlugin,
+            server::ServerPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
