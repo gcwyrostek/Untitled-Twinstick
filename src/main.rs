@@ -8,6 +8,7 @@ use bevy::{
 use crate::pickup_system::PickupPlugin;
 
 // Game modules
+mod collectible;
 mod components;
 mod enemy;
 mod events;
@@ -79,6 +80,7 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
+            collectible::CollectiblePlugin,
             ui::UIPlugin,
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
