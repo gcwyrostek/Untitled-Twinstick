@@ -15,6 +15,7 @@ mod menu;
 mod player;
 mod player_material;
 mod projectile;
+mod server;
 mod tiling;
 mod ui;
 mod server;
@@ -24,8 +25,8 @@ mod pickup_system;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
-mod slideshow;
 mod game_over;
+mod slideshow;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
