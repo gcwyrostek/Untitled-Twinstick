@@ -1,9 +1,8 @@
-use bevy::prelude::*;
-use crate::{GameState,
-            player::Player,
-            projectile::Projectile,
-            components::Health,
-            events::DamagePlayerEvent,};
+use crate::{
+    components::Health, events::DamagePlayerEvent, player::Player, projectile::Projectile,
+    GameState,
+};
+use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
 // Stats for different enemy types!
@@ -23,19 +22,32 @@ const ACCEL_RATE: f32 = 10000.;
 pub struct EnemyPlugin;
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app
-        .add_systems(OnEnter(GameState::Playing), setup_enemy)
-        .add_systems(Update, enemy_movement.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, all_enemies_defeated.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
+        app.add_systems(OnEnter(GameState::Playing), setup_enemy)
+            .add_systems(
+                Update,
+                enemy_chase_velocity.run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                Update,
+                enemy_cram_velocity.run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                Update,
+                enemy_velocity_apply.run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(Update, enemy_damage.run_if(in_state(GameState::Playing)))
+            .add_systems(
+                Update,
+                all_enemies_defeated.run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(Update, enemy_attack.run_if(in_state(GameState::Playing)));
     }
 }
 
 #[derive(Component)]
 pub struct Enemy {
     enemy_type: EnemyType,
-    enemy_speed: f32
+    enemy_speed: f32,
 }
 
 impl Enemy {
@@ -45,14 +57,17 @@ impl Enemy {
             EnemyType::Strong => STRONG_SPEED,
             EnemyType::Fast => FAST_SPEED,
         };
-        Enemy {enemy_type, enemy_speed}
+        Enemy {
+            enemy_type,
+            enemy_speed,
+        }
     }
 }
 
 enum EnemyType {
     Normal,
     Strong,
-    Fast
+    Fast,
 }
 
 #[derive(Component, Deref, DerefMut)]
@@ -81,7 +96,8 @@ pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in 0..=3 {
         commands.spawn((
             Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz(-1000., (i * 300) as f32, 10.).with_scale(Vec3::new(1.25, 1.25, 1.25)),
+            Transform::from_xyz(-1000., (i * 300) as f32, 10.)
+                .with_scale(Vec3::new(1.25, 1.25, 1.25)),
             Velocity::new(),
             Enemy::new(EnemyType::Strong),
             Health::new(STRONG_HEALTH),
@@ -90,7 +106,8 @@ pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in 0..=12 {
         commands.spawn((
             Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz((i * 1000) as f32, 15000., 10.).with_scale(Vec3::new(0.75, 0.75, 0.75)),
+            Transform::from_xyz((i * 1000) as f32, 15000., 10.)
+                .with_scale(Vec3::new(0.75, 0.75, 0.75)),
             Velocity::new(),
             Enemy::new(EnemyType::Fast),
             Health::new(FAST_HEALTH),
@@ -98,7 +115,7 @@ pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
 }
 
-pub fn enemy_movement(
+pub fn enemy_chase_velocity(
     time: Res<Time>,
     mut params: ParamSet<(
         Query<(&Enemy, &mut Transform, &mut Velocity), With<Enemy>>,
@@ -106,14 +123,13 @@ pub fn enemy_movement(
     )>,
 ) {
     let player_transform = params.p1().into_inner().clone();
+    let deltat = time.delta_secs();
+    let accel = ACCEL_RATE * deltat;
     for (enemy, mut enemy_transform, mut velocity) in params.p0().iter_mut() {
         // Create a vector FROM the enemy TO the player target.
         let mut dir = Vec2::ZERO;
         dir.x = player_transform.translation.x - enemy_transform.translation.x;
         dir.y = player_transform.translation.y - enemy_transform.translation.y;
-
-        let deltat = time.delta_secs();
-        let accel = ACCEL_RATE * deltat;
 
         **velocity = if dir.length() > 0. {
             (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(enemy.enemy_speed)
@@ -122,14 +138,49 @@ pub fn enemy_movement(
         } else {
             Vec2::ZERO
         };
-        let change = **velocity * deltat;
-
-        enemy_transform.translation += change.extend(0.);
 
         let rotation_z = dir.y.atan2(dir.x);
         enemy_transform.rotation = Quat::from_rotation_z(rotation_z - consts::PI / 2.);
     }
-} 
+}
+
+pub fn enemy_cram_velocity(
+    time: Res<Time>,
+    mut enemy_tuples: Query<(&Enemy, &mut Transform, &mut Velocity), With<Enemy>>,
+) {
+    let mut other_tvs: Vec<(Mut<'_, Transform>, Mut<'_, Velocity>)> = Vec::new();
+    for (e, t, mut v) in enemy_tuples.iter_mut() {
+        for (other_t, other_v) in other_tvs.iter_mut() {
+            let distance = t.translation.distance(other_t.translation);
+            let overlap = RADIUS - (distance / 2.0);
+            if overlap <= 0.0 {
+                continue;
+            }
+
+            let mut repel_dir = Vec2::ZERO;
+            repel_dir.x = other_t.translation.x - t.translation.x;
+            repel_dir.y = other_t.translation.y - t.translation.y;
+            repel_dir = repel_dir.normalize();
+            repel_dir *= -1.0;
+            let own_repel_velocity = repel_dir * overlap * e.enemy_speed / 100.0;
+            v.velocity += own_repel_velocity;
+            let other_repel_velocity = -1.0 * own_repel_velocity;
+            other_v.velocity += other_repel_velocity;
+        }
+        other_tvs.push((t, v));
+    }
+}
+
+pub fn enemy_velocity_apply(
+    time: Res<Time>,
+    mut enemy_tuples: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
+) {
+    let deltat = time.delta_secs();
+    for (mut transform, velocity) in enemy_tuples.iter_mut() {
+        let change = **velocity * deltat;
+        transform.translation += change.extend(0.);
+    }
+}
 
 pub fn enemy_attack(
     enemies: Query<&Transform, With<Enemy>>,
@@ -148,11 +199,12 @@ pub fn enemy_attack(
 pub fn enemy_damage(
     mut enemies: Query<(Entity, &Transform, &mut Health), With<Enemy>>,
     projectiles: Query<&Transform, With<Projectile>>,
-    mut commands: Commands
+    mut commands: Commands,
 ) {
     for (enemy, enemy_transform, mut enemy_health) in enemies.iter_mut() {
         for projectile_transform in projectiles.iter() {
-            let distance = (enemy_transform.translation - projectile_transform.translation).length();
+            let distance =
+                (enemy_transform.translation - projectile_transform.translation).length();
             if distance > RADIUS {
                 continue;
             }
@@ -162,11 +214,11 @@ pub fn enemy_damage(
             }
         }
     }
-} 
+}
 
 pub fn all_enemies_defeated(
     all_enemies: Query<&Health, With<Enemy>>,
-    mut next_state: ResMut<NextState<GameState>>
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let mut all_enemies_dead = true;
     for enemy in all_enemies.iter() {
