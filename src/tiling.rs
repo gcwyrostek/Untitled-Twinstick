@@ -1,5 +1,5 @@
-use bevy::{prelude::*};
 use crate::{GameState, WIN_H, WIN_W};
+use bevy::prelude::*;
 
 const TILE_SIZE: u32 = 128;
 

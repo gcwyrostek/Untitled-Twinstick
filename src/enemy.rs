@@ -1,6 +1,6 @@
 use crate::{
-    components::Health, events::DamagePlayerEvent, player::Player, projectile::Projectile,
-    GameState,
+    GameState, components::Health, events::DamagePlayerEvent, player::Player,
+    projectile::Projectile,
 };
 use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
