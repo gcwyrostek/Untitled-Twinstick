@@ -20,7 +20,8 @@ impl Plugin for ClientPlugin {
                 client_connect,
             ),
         )
-        .add_systems(FixedUpdate, client_run.run_if(in_state(GameState::Joining)));
+        .add_systems(FixedUpdate, client_run.run_if(in_state(GameState::Joining)))
+        .add_systems(OnExit(GameState::Playing), client_close);
     }
 }
 
@@ -35,6 +36,10 @@ fn client_start(commands: Commands, mut socket: ResMut<SocketResource>) {
     info!("In client start");
     //This makes it so the game doesn't wait to receive a message, before going to the next frame
     socket.socket.set_nonblocking(true);
+}
+
+fn client_close(mut commands: Commands) {
+    commands.remove_resource::<SocketResource>();
 }
 
 fn client_connect(mut socket: ResMut<SocketResource>) {

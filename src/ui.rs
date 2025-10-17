@@ -4,7 +4,8 @@ use bevy::prelude::*;
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), setup_ui)
+        app
+            .add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }

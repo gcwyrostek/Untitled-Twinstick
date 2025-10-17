@@ -16,7 +16,8 @@ impl Plugin for ServerPlugin {
             OnEnter(GameState::Playing),
             (server_init.before(server_start), server_start),
         )
-        .add_systems(FixedUpdate, server_run.run_if(in_state(GameState::Playing)));
+        .add_systems(FixedUpdate, server_run.run_if(in_state(GameState::Playing)))
+        .add_systems(OnExit(GameState::Playing), server_close);
     }
 }
 
@@ -24,6 +25,10 @@ fn server_init(mut commands: Commands) {
     commands.insert_resource(SocketResource {
         socket: UdpSocket::bind(IP_CONST).expect("ERROR"),
     });
+}
+
+fn server_close(mut commands: Commands) {
+    commands.remove_resource::<SocketResource>();
 }
 
 fn server_start(commands: Commands, mut socket: ResMut<SocketResource>) {

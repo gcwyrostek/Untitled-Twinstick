@@ -11,7 +11,7 @@ impl Plugin for TilingPlugin {
 }
 
 #[derive(Component)]
-struct Tile;
+pub struct Tile;
 
 pub fn setup_tiling(
     mut commands: Commands,
