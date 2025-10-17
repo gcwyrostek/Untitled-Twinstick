@@ -16,6 +16,8 @@ mod projectile;
 mod tiling;
 mod ui;
 mod server;
+mod client;
+mod keypress_encoder;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -32,6 +34,7 @@ enum GameState {
     #[default]
     Menu,
     Playing,
+    Joining,
     Credits,
     GameOver,
 }
@@ -80,6 +83,8 @@ fn main() {
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
             server::ServerPlugin,
+            client::ClientPlugin,
+            keypress_encoder::KeyEncodePlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();

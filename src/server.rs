@@ -42,9 +42,10 @@ fn server_run(
     {
         Ok((amt, src)) => {
             info!("{:?} + {:?} + {:?}", amt, src, buf);
+            socket.socket.send_to(&[1; 10], src).expect("couldn't send data");
         }
         Err(e) => {
-            //info!("ERROR");
+            //info!("Nothing");
         }
     }
 }
