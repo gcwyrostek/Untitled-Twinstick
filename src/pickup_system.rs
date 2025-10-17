@@ -166,7 +166,7 @@ fn attach_flashlight_to_player(
                 let sx = if player_tf.scale.x != 0.0 { 1.0 / player_tf.scale.x } else { 1.0 };
                 let sy = if player_tf.scale.y != 0.0 { 1.0 / player_tf.scale.y } else { 1.0 };
                 // Also compensate the local offset so it stays ~20px to the right visually
-                let offset_x = 40s.0 * sx;   // 20px to the right of the player, increase to push it further right, decrease to push it further left
+                let offset_x = 40.0 * sx;   // 20px to the right of the player, increase to push it further right, decrease to push it further left
                 commands.entity(player_entity).with_children(|cb| {
                     cb.spawn((
                         Sprite::from_image(asset_server.load("textures/flashlight.png")),
