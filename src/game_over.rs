@@ -1,19 +1,15 @@
-use bevy::{prelude::*, window::PresentMode};
-use bevy::input::mouse::MouseButtonInput;
 use crate::GameState;
+use bevy::input::mouse::MouseButtonInput;
+use bevy::{prelude::*, window::PresentMode};
 
 pub struct GameOverPlugin;
 impl Plugin for GameOverPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::GameOver), display_game_over);
+        app.add_systems(OnEnter(GameState::GameOver), display_game_over);
     }
 }
 
-pub fn display_game_over(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>
-) {
+pub fn display_game_over(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands
         .spawn((
             Node {

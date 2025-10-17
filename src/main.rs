@@ -5,14 +5,19 @@ use bevy::{
     winit::cursor::{CursorIcon, CustomCursor, CustomCursorImage},
 };
 
+use crate::pickup_system::PickupPlugin;
+
 // Game modules
+mod collectible;
 mod components;
 mod enemy;
 mod events;
 mod menu;
+mod pickup_system;
 mod player;
 mod player_material;
 mod projectile;
+mod server;
 mod tiling;
 mod ui;
 mod server;
@@ -23,8 +28,8 @@ mod keypress_encoder;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
-mod slideshow;
 mod game_over;
+mod slideshow;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -70,6 +75,7 @@ fn main() {
         // GameState init
         .init_state::<GameState>()
         // Core game systems
+        //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)
         .add_systems(Startup, setup_cursor_icon)
         //Plugin Section
         .add_plugins((
@@ -78,6 +84,7 @@ fn main() {
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
+            collectible::CollectiblePlugin,
             ui::UIPlugin,
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
@@ -85,6 +92,7 @@ fn main() {
             server::ServerPlugin,
             client::ClientPlugin,
             keypress_encoder::KeyEncodePlugin,
+            PickupPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();

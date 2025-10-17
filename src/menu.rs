@@ -204,10 +204,7 @@ fn on_exit_playing() {
 }
 
 fn start_on_input(
-    mut interaction_query: Query<
-        (&Interaction, &MenuButton),
-        (Changed<Interaction>, With<Button>),
-    >,
+    mut interaction_query: Query<(&Interaction, &MenuButton), (Changed<Interaction>, With<Button>)>,
     mut next_state: ResMut<NextState<GameState>>,
     mut exit: EventWriter<bevy::app::AppExit>,
 ) {
