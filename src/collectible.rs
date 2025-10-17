@@ -13,6 +13,7 @@ pub enum CollectibleType {
     Ammo(i32),    // Amount of ammo
     Battery(i32), // Amount of battery power
     Health(i32),  // Amount of health
+    Flashlight,   // flashlight
 }
 
 #[derive(Resource)]
@@ -21,6 +22,7 @@ pub struct PlayerInventory {
     pub ammo: i32,
     pub max_revive_kits: i32,
     pub max_ammo: i32,
+    pub has_flashlight: bool,
 }
 
 impl Default for PlayerInventory {
@@ -30,6 +32,7 @@ impl Default for PlayerInventory {
             ammo: 30, // Start with 30 bullets
             max_revive_kits: 1,
             max_ammo: 120,
+            has_flashlight: false,
         }
     }
 }
@@ -95,6 +98,19 @@ pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>
             },
         ));
     }
+
+    // Spawn some flashlight pickups
+    for i in 0..2 {
+        commands.spawn((
+            Sprite::from_image(asset_server.load("textures/flashlight.png")),
+            Transform::from_xyz(50.0 + (i as f32 * 180.0), 200.0, 5.0)
+                .with_scale(Vec3::splat(1.2)), // 1.2x larger than original size
+            Collectible {
+                collectible_type: CollectibleType::Flashlight, // Flashlight pickup (boolean to check if picked up or not)
+                amount: 1,                                     // Single flashlight
+            },
+        ));
+    }
 }
 
 // Helper functions for future use
@@ -130,4 +146,12 @@ pub fn consume_ammo(inventory: &mut ResMut<PlayerInventory>, amount: i32) -> boo
 // Helper function to check if player can shoot
 pub fn can_shoot(inventory: &Res<PlayerInventory>) -> bool {
     inventory.ammo > 0
+}
+
+// Helper function to grant flashlight
+pub fn pickup_flashlight(inventory: &mut ResMut<PlayerInventory>) {
+    if !inventory.has_flashlight {
+        inventory.has_flashlight = true;
+        println!("Picked up flashlight!");
+    }
 }
