@@ -8,15 +8,18 @@ use bevy::{
 use crate::pickup_system::PickupPlugin;
 
 // Game modules
+mod client;
 mod collectible;
 mod components;
 mod enemy;
 mod events;
+mod keypress_encoder;
 mod menu;
 mod pickup_system;
 mod player;
 mod player_material;
 mod projectile;
+mod server;
 mod server;
 mod tiling;
 mod ui;
@@ -36,6 +39,7 @@ enum GameState {
     #[default]
     Menu,
     Playing,
+    Joining,
     Credits,
     GameOver,
 }
@@ -86,6 +90,8 @@ fn main() {
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
             server::ServerPlugin,
+            client::ClientPlugin,
+            keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()

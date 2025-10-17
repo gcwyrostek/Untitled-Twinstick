@@ -217,11 +217,9 @@ fn start_on_input(
                 }
                 MenuButton::Join => {
                     info!("join button pressed.");
-                    let socket =
-                        UdpSocket::bind("127.0.0.1:24515").expect("couldn't bind to address");
-                    socket
-                        .send_to(&[5; 10], "127.0.0.1:2525")
-                        .expect("couldn't send data");
+                    //let socket = UdpSocket::bind("127.0.0.1:24515").expect("couldn't bind to address");
+                    //socket.send_to(&[5; 10], "127.0.0.1:2525").expect("couldn't send data");
+                    next_state.set(GameState::Joining);
                 }
                 MenuButton::Credits => {
                     info!("credits button pressed.");
