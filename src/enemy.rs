@@ -6,7 +6,7 @@ use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
 // Stats for different enemy types!
-const NORMAL_SPEED: f32 = 300.;
+const NORMAL_SPEED: f32 = 150.;
 const STRONG_SPEED: f32 = 100.;
 const FAST_SPEED: f32 = 600.;
 
