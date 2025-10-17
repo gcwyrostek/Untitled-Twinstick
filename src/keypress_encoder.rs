@@ -1,12 +1,14 @@
-use bevy::prelude::*;
-use bevy::input::mouse::MouseButton;
 use crate::GameState;
+use bevy::input::mouse::MouseButton;
+use bevy::prelude::*;
 
 pub struct KeyEncodePlugin;
 impl Plugin for KeyEncodePlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(FixedUpdate, input_converter.run_if(in_state(GameState::Playing)));
+        app.add_systems(
+            FixedUpdate,
+            input_converter.run_if(in_state(GameState::Playing)),
+        );
     }
 }
 
@@ -20,26 +22,26 @@ pub fn input_converter(
     if input.pressed(KeyCode::KeyW) {
         out += 128;
     }
-    
+
     if input.pressed(KeyCode::KeyA) {
         out += 64;
     }
-    
+
     if input.pressed(KeyCode::KeyS) {
         out += 32;
     }
-    
+
     if input.pressed(KeyCode::KeyD) {
         out += 16;
     }
-    
+
     if mouse_button_io.pressed(MouseButton::Left) {
         out += 2;
     }
 
     //info!("WASD");
     //info!("{:08b}", out);
-    
+
     /*for i in input.get_pressed() {
         info!("(KEYBOARD) {:?} is pressed.", i);
     }

@@ -8,21 +8,21 @@ use bevy::{
 use crate::pickup_system::PickupPlugin;
 
 // Game modules
+mod client;
 mod collectible;
 mod components;
 mod enemy;
 mod events;
+mod keypress_encoder;
 mod menu;
 mod pickup_system;
 mod player;
 mod player_material;
 mod projectile;
 mod server;
+mod server;
 mod tiling;
 mod ui;
-mod server;
-mod client;
-mod keypress_encoder;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;

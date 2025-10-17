@@ -38,7 +38,10 @@ fn server_run(mut socket: ResMut<'_, SocketResource>) {
     match socket.socket.recv_from(&mut buf) {
         Ok((amt, src)) => {
             info!("{:?} + {:?} + {:?}", amt, src, buf);
-            socket.socket.send_to(&[1; 10], src).expect("couldn't send data");
+            socket
+                .socket
+                .send_to(&[1; 10], src)
+                .expect("couldn't send data");
         }
         Err(e) => {
             //info!("Nothing");
