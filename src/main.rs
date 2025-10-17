@@ -20,7 +20,6 @@ mod player;
 mod player_material;
 mod projectile;
 mod server;
-mod server;
 mod tiling;
 mod ui;
 //mod reticle;
