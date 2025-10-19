@@ -62,6 +62,11 @@ impl Velocity {
     }
 }
 
+enum PlayerControl{
+    Local,
+    Network,
+}
+
 pub fn setup_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -146,7 +151,7 @@ pub fn player_orientation(
         if let Ok(cursor_world_position) =
             camera.viewport_to_world_2d(camera_transform, cursor_position)
         {
-            for (mut material, player_transform) in players.iter_mut() {
+            for (material, player_transform) in players.iter_mut() {
                 let player_position = player_transform.translation.truncate();
                 let direction = cursor_world_position - player_position;
 
