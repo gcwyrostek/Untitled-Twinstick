@@ -3,7 +3,6 @@ use bevy::prelude::*;
 
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
-use std::net::UdpSocket;
 
 #[derive(Component)]
 enum MenuButton {

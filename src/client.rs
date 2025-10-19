@@ -32,7 +32,7 @@ fn client_init(mut commands: Commands) {
     });
 }
 
-fn client_start(commands: Commands, mut socket: ResMut<SocketResource>) {
+fn client_start(socket: ResMut<SocketResource>) {
     info!("In client start");
     //This makes it so the game doesn't wait to receive a message, before going to the next frame
     socket.socket.set_nonblocking(true);
@@ -42,7 +42,7 @@ fn client_close(mut commands: Commands) {
     commands.remove_resource::<SocketResource>();
 }
 
-fn client_connect(mut socket: ResMut<SocketResource>) {
+fn client_connect(socket: ResMut<SocketResource>) {
     info!("In client connect");
     let mut buf = [0; 10];
     socket
@@ -54,13 +54,13 @@ fn client_connect(mut socket: ResMut<SocketResource>) {
             info!("{:?} + {:?} + {:?}", amt, src, buf);
         }
         Err(e) => {
-            //info!("ERROR");
+            info!("{:?}", e);
         }
     }
 }
 
-fn client_run(mut socket: ResMut<'_, SocketResource>) {
-    let mut buf = [0; 10];
+fn client_run(socket: ResMut<'_, SocketResource>) {
+    //let mut buf = [0; 10];
     socket
         .socket
         .send_to(&[9; 10], "127.0.0.1:2525")

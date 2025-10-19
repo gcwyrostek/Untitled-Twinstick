@@ -31,12 +31,12 @@ fn server_close(mut commands: Commands) {
     commands.remove_resource::<SocketResource>();
 }
 
-fn server_start(commands: Commands, mut socket: ResMut<SocketResource>) {
+fn server_start(socket: ResMut<SocketResource>) {
     //This makes it so the game doesn't wait to receive a message, before going to the next frame
     socket.socket.set_nonblocking(true);
 }
 
-fn server_run(mut socket: ResMut<'_, SocketResource>) {
+fn server_run(socket: ResMut<'_, SocketResource>) {
     let mut buf = [0; 10];
 
     //This might only work for one client at a time, so we may need to adjust this when we get further

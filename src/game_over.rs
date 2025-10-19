@@ -4,8 +4,7 @@ use crate::enemy::Enemy;
 use crate::collectible::Collectible;
 use crate::ui::HealthBar;
 use crate::tiling::Tile;
-use bevy::input::mouse::MouseButtonInput;
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{prelude::*};
 
 pub struct GameOverPlugin;
 impl Plugin for GameOverPlugin {
@@ -19,7 +18,7 @@ impl Plugin for GameOverPlugin {
 #[derive(Component)]
 pub struct GameOverScreen;
 
-pub fn display_game_over(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn display_game_over(mut commands: Commands) {
     commands
         .spawn((
             Node {
