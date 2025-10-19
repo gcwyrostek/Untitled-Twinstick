@@ -20,7 +20,7 @@ impl Plugin for ClientPlugin {
                 client_connect,
             ),
         )
-        .add_systems(FixedUpdate, client_run.run_if(in_state(GameState::Joining)))
+        .add_systems(FixedUpdate, input_converter.run_if(in_state(GameState::Joining)))
         .add_systems(OnExit(GameState::Playing), client_close);
     }
 }
@@ -74,5 +74,49 @@ fn client_run(socket: ResMut<'_, SocketResource>) {
         Err(e) => {
             //info!("ERROR");
         }
+    }*/
+}
+
+pub fn input_converter(
+    time: Res<Time>,
+    input: Res<ButtonInput<KeyCode>>,
+    mouse_button_io: Res<ButtonInput<MouseButton>>,
+    socket: ResMut<SocketResource>,
+) {
+    let mut out: u8 = 0;
+    //WASDL
+    if input.pressed(KeyCode::KeyW) {
+        out += 128;
+    }
+
+    if input.pressed(KeyCode::KeyA) {
+        out += 64;
+    }
+
+    if input.pressed(KeyCode::KeyS) {
+        out += 32;
+    }
+
+    if input.pressed(KeyCode::KeyD) {
+        out += 16;
+    }
+
+    if mouse_button_io.pressed(MouseButton::Left) {
+        out += 2;
+    }
+
+    socket
+        .socket
+        .send_to(&[out], "127.0.0.1:2525")
+        .expect("couldn't send data");
+    //info!("WASD");
+    //info!("{:08b}", out);
+
+    /*for i in input.get_pressed() {
+        info!("(KEYBOARD) {:?} is pressed.", i);
+    }
+
+    for i in mouse_button_io.get_pressed(){
+        info!("(MOUSE) {:?} is pressed.", i);
     }*/
 }

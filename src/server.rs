@@ -1,4 +1,6 @@
 use crate::GameState;
+use crate::player::Player;
+use crate::player::NetControl;
 use bevy::prelude::*;
 use std::net::UdpSocket;
 
@@ -36,17 +38,23 @@ fn server_start(socket: ResMut<SocketResource>) {
     socket.socket.set_nonblocking(true);
 }
 
-fn server_run(socket: ResMut<'_, SocketResource>) {
+fn server_run(
+    socket: ResMut<'_, SocketResource>,
+    player: Query<&mut NetControl, (With<Player>, With<NetControl>)>,
+) {
     let mut buf = [0; 10];
 
     //This might only work for one client at a time, so we may need to adjust this when we get further
     match socket.socket.recv_from(&mut buf) {
         Ok((amt, src)) => {
-            info!("{:?} + {:?} + {:?}", amt, src, buf);
-            socket
+            for mut netcontrol in player {
+                netcontrol.net_input = buf[0];
+            }
+            //info!("{:?} + {:?} + {:?}", amt, src, buf);
+            /*socket
                 .socket
                 .send_to(&[1; 10], src)
-                .expect("couldn't send data");
+                .expect("couldn't send data");*/
         }
         Err(e) => {
             //info!("Nothing");
