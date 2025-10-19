@@ -85,13 +85,13 @@ pub fn setup_player(
             lighting: crate::player_material::Lighting { 
                 ambient_reflection_coefficient: 1.0, 
                 ambient_light_intensity: 1.0,
-                diffuse_reflection_coefficient: 1.0,
-                _padding: 0.0
+                diffuse_reflection_coefficient: 0.5,
+                specular_reflection_coefficient: 0.6,
             },
             lights: lights.lights,
             normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
         })),
-        Transform::from_xyz(-300., 0., 10.).with_scale(Vec3::splat(64.)), // Change size of player here: current size: 64. (makes player 64x larger)
+        Transform::from_xyz(-300., 0., 0.).with_scale(Vec3::splat(64.)), // Change size of player here: current size: 64. (makes player 64x larger)
         // you can have a smaller player with 32 and larger player with 128
         Velocity::new(),
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),

@@ -15,7 +15,7 @@ struct Lighting {
     ambient_reflection_coefficient: f32,
     ambient_light_intensity: f32,
     diffuse_reflection_coefficient: f32,
-    _padding: f32,
+    specular_reflection_coefficient: f32,
 };
 
 // Struct representing each individual light in the scene
@@ -30,7 +30,22 @@ struct Light {
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let base_color = textureSample(base_color_texture, base_color_sampler, mesh.uv);
 
+    let normal = textureSample(normal_texture, normal_sampler, mesh.uv).rgb;
+    let normal_range = normalize(normal_flipped * 2.0 - 1.0);
 
+    let ambient = lighting.ambient_reflection_coefficient * lighting.ambient_light_intensity;
 
-    return base_color;
+    var diffuse: f32 = 0.0;
+    var specular: f32 = 0.0;
+    let view_direction = vec3<f32>(0.0, 0.0, 1.0);
+    for (var i: i32 = 0; i < NUM_LIGHTS; i += 1) {
+        let pixel_to_light = normalize(lights[i].position - vec3<f32>(mesh.world_position.x, mesh.world_position.y, mesh.world_position.z));
+        diffuse += lighting.diffuse_reflection_coefficient * lights[i].intensity * max(0.0, dot(normal_range, pixel_to_light));
+
+        let reflection = reflect(-pixel_to_light, normal_range);
+        specular += lighting.specular_reflection_coefficient * lights[i].intensity * pow(max(dot(view_direction, reflection), 0.0), 10.0);
+    }
+
+    let final_color = vec4<f32>(base_color.rgb * (diffuse + specular), base_color.a);
+    return final_color;
 }

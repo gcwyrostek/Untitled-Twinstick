@@ -6,7 +6,7 @@ use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
 // Stats for different enemy types!
-const NORMAL_SPEED: f32 = 150.;
+const NORMAL_SPEED: f32 = 50.;
 const STRONG_SPEED: f32 = 100.;
 const FAST_SPEED: f32 = 600.;
 
@@ -93,26 +93,26 @@ pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
             Health::new(NORMAL_HEALTH),
         ));
     }
-    for i in 0..=3 {
-        commands.spawn((
-            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz(-1000., (i * 300) as f32, 10.)
-                .with_scale(Vec3::new(1.25, 1.25, 1.25)),
-            Velocity::new(),
-            Enemy::new(EnemyType::Strong),
-            Health::new(STRONG_HEALTH),
-        ));
-    }
-    for i in 0..=12 {
-        commands.spawn((
-            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz((i * 1000) as f32, 15000., 10.)
-                .with_scale(Vec3::new(0.75, 0.75, 0.75)),
-            Velocity::new(),
-            Enemy::new(EnemyType::Fast),
-            Health::new(FAST_HEALTH),
-        ));
-    }
+    // for i in 0..=3 {
+    //     commands.spawn((
+    //         Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+    //         Transform::from_xyz(-1000., (i * 300) as f32, 10.)
+    //             .with_scale(Vec3::new(1.25, 1.25, 1.25)),
+    //         Velocity::new(),
+    //         Enemy::new(EnemyType::Strong),
+    //         Health::new(STRONG_HEALTH),
+    //     ));
+    // }
+    // for i in 0..=12 {
+    //     commands.spawn((
+    //         Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+    //         Transform::from_xyz((i * 1000) as f32, 15000., 10.)
+    //             .with_scale(Vec3::new(0.75, 0.75, 0.75)),
+    //         Velocity::new(),
+    //         Enemy::new(EnemyType::Fast),
+    //         Health::new(FAST_HEALTH),
+    //     ));
+    // }
 }
 
 pub fn enemy_chase_velocity(

@@ -14,7 +14,7 @@ pub struct Lighting {
     pub ambient_reflection_coefficient: f32,
     pub ambient_light_intensity: f32,
     pub diffuse_reflection_coefficient: f32,
-    pub _padding: f32,
+    pub specular_reflection_coefficient: f32,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]

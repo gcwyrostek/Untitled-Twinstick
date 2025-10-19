@@ -34,31 +34,31 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.1, 10.0),
+            LightSource::new(transform.translation, 1.0, 10.0),
         )
     });
     
     commands.spawn({
-        let transform = Transform::from_xyz(5., 5., 0.);
+        let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.1, 15.0),
+            LightSource::new(transform.translation, 0.0, 15.0),
         )
     });
 
     commands.spawn({
-        let transform = Transform::from_xyz(5., 5., 0.);
+        let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.1, 15.0),
+            LightSource::new(transform.translation, 0.0, 15.0),
         )
     });
 
     commands.spawn({
-        let transform = Transform::from_xyz(5., 5., 0.);
+        let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 1.0, 15.0),
+            LightSource::new(transform.translation, 0.0, 15.0),
         )
     });
 }
