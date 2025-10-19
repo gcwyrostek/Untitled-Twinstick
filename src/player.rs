@@ -1,3 +1,4 @@
+use crate::light_manager::Light;
 use crate::{
     GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial,
 };
@@ -5,6 +6,8 @@ use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
+use crate::components::LightSource;
+use crate::light_manager::Lights;
 
 const PLAYER_SPEED: f32 = 300.;
 const ACCEL_RATE: f32 = 3600.;
@@ -68,6 +71,7 @@ pub fn setup_player(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     asset_server: Res<AssetServer>,
     query: Query<Entity, With<Camera>>,
+    lights: Res<Lights>,
 ) {
     if query.is_empty() {
         commands.spawn(Camera2d);
@@ -76,8 +80,16 @@ pub fn setup_player(
     commands.spawn((
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
-            color: LinearRgba::BLACK,
-            texture: Some(asset_server.load("player/blueberryman.png")),
+            color: LinearRgba::BLUE,
+            texture: Some(asset_server.load("enemy/enemy_standard_albedo.png")),
+            lighting: crate::player_material::Lighting { 
+                ambient_reflection_coefficient: 1.0, 
+                ambient_light_intensity: 1.0,
+                diffuse_reflection_coefficient: 1.0,
+                _padding: 0.0
+            },
+            lights: lights.lights,
+            normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
         })),
         Transform::from_xyz(-300., 0., 10.).with_scale(Vec3::splat(64.)), // Change size of player here: current size: 64. (makes player 64x larger)
         // you can have a smaller player with 32 and larger player with 128
@@ -86,7 +98,7 @@ pub fn setup_player(
         Player,
         Health::new(MAX_HEALTH),
     ));
-}
+} 
 
 pub fn player_movement(
     time: Res<Time>,
@@ -150,43 +162,43 @@ pub fn player_orientation(
                 let player_position = player_transform.translation.truncate();
                 let direction = cursor_world_position - player_position;
 
-                if direction.length() > 0.0 {
-                    let angle = direction.y.atan2(direction.x);
-                    let degrees = angle.to_degrees();
+                // if direction.length() > 0.0 {
+                //     let angle = direction.y.atan2(direction.x);
+                //     let degrees = angle.to_degrees();
 
-                    // Convert to 0-360 range and rotate so 0° is bottom
-                    let normalized_degrees = ((if degrees < 0.0 {
-                        degrees + 360.0
-                    } else {
-                        degrees
-                    }) + 90.0)
-                        % 360.0;
+                //     // Convert to 0-360 range and rotate so 0° is bottom
+                //     let normalized_degrees = ((if degrees < 0.0 {
+                //         degrees + 360.0
+                //     } else {
+                //         degrees
+                //     }) + 90.0)
+                //         % 360.0;
 
-                    // Map angle ranges to sprite images
-                    // Bottom=0°, Right=90°, Top=180°, Left=270°
-                    let sprite_path = if normalized_degrees >= 337.5 || normalized_degrees < 22.5 {
-                        "player/blueberryman.png" // 0° (bottom)
-                    } else if normalized_degrees >= 22.5 && normalized_degrees < 67.5 {
-                        "player/blueberryman45.png" // 45° (bottom right)
-                    } else if normalized_degrees >= 67.5 && normalized_degrees < 112.5 {
-                        "player/blueberryman90.png" // 90° (right)
-                    } else if normalized_degrees >= 112.5 && normalized_degrees < 157.5 {
-                        "player/blueberryman135.png" // 135° (top right)
-                    } else if normalized_degrees >= 157.5 && normalized_degrees < 202.5 {
-                        "player/blueberryman180.png" // 180° (top)
-                    } else if normalized_degrees >= 202.5 && normalized_degrees < 247.5 {
-                        "player/blueberryman-135.png" // 225° (top left)
-                    } else if normalized_degrees >= 247.5 && normalized_degrees < 292.5 {
-                        "player/blueberryman-90.png" // 270° (left)
-                    } else {
-                        "player/blueberryman-45.png" // 315° (bottom left)
-                    };
+                //     // Map angle ranges to sprite images
+                //     // Bottom=0°, Right=90°, Top=180°, Left=270°
+                //     let sprite_path = if normalized_degrees >= 337.5 || normalized_degrees < 22.5 {
+                //         "player/blueberryman.png" // 0° (bottom)
+                //     } else if normalized_degrees >= 22.5 && normalized_degrees < 67.5 {
+                //         "player/blueberryman45.png" // 45° (bottom right)
+                //     } else if normalized_degrees >= 67.5 && normalized_degrees < 112.5 {
+                //         "player/blueberryman90.png" // 90° (right)
+                //     } else if normalized_degrees >= 112.5 && normalized_degrees < 157.5 {
+                //         "player/blueberryman135.png" // 135° (top right)
+                //     } else if normalized_degrees >= 157.5 && normalized_degrees < 202.5 {
+                //         "player/blueberryman180.png" // 180° (top)
+                //     } else if normalized_degrees >= 202.5 && normalized_degrees < 247.5 {
+                //         "player/blueberryman-135.png" // 225° (top left)
+                //     } else if normalized_degrees >= 247.5 && normalized_degrees < 292.5 {
+                //         "player/blueberryman-90.png" // 270° (left)
+                //     } else {
+                //         "player/blueberryman-45.png" // 315° (bottom left)
+                //     };
 
-                    // Get the material handle and update its texture
-                    if let Some(material_handle) = materials.get_mut(&material.0) {
-                        material_handle.texture = Some(asset_server.load(sprite_path));
-                    }
-                }
+                //     // Get the material handle and update its texture
+                //     if let Some(material_handle) = materials.get_mut(&material.0) {
+                //         material_handle.texture = Some(asset_server.load(sprite_path));
+                //     }
+                // }
             }
         }
     }

@@ -22,6 +22,7 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod light_manager;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -78,6 +79,7 @@ fn main() {
         .add_systems(Startup, setup_cursor_icon)
         //Plugin Section
         .add_plugins((
+            light_manager::LightSourcePlugin,
             menu::MenuPlugin,
             player::PlayerPlugin,
             tiling::TilingPlugin,
