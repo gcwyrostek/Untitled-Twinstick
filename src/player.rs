@@ -1,12 +1,11 @@
-use crate::light_manager::Light;
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial,
+    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::LightSource,
 };
+use std::f32::consts;
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
-use crate::components::LightSource;
 use crate::light_manager::Lights;
 
 const PLAYER_SPEED: f32 = 300.;
@@ -81,17 +80,17 @@ pub fn setup_player(
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
             color: LinearRgba::BLUE,
-            texture: Some(asset_server.load("enemy/enemy_standard_albedo.png")),
+            texture: Some(asset_server.load("player/player_albedo.png")),
             lighting: crate::player_material::Lighting { 
-                ambient_reflection_coefficient: 1.0, 
-                ambient_light_intensity: 1.0,
-                diffuse_reflection_coefficient: 0.5,
-                specular_reflection_coefficient: 0.6,
+                ambient_reflection_coefficient: 0.1, 
+                ambient_light_intensity: 0.1,
+                diffuse_reflection_coefficient: 1.0,
+                shininess: 40.0,
             },
             lights: lights.lights,
-            normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
+            normal: Some(asset_server.load("player/player_normal.png")),
         })),
-        Transform::from_xyz(-300., 0., 0.).with_scale(Vec3::splat(64.)), // Change size of player here: current size: 64. (makes player 64x larger)
+        Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
         // you can have a smaller player with 32 and larger player with 128
         Velocity::new(),
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
@@ -141,7 +140,7 @@ pub fn player_movement(
 }
 
 pub fn player_orientation(
-    mut players: Query<(&mut MeshMaterial2d<PlayerBaseMaterial>, &Transform), With<Player>>,
+    mut players: Query<(&mut MeshMaterial2d<PlayerBaseMaterial>, &mut Transform), With<Player>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
     asset_server: Res<AssetServer>,
@@ -158,21 +157,24 @@ pub fn player_orientation(
         if let Ok(cursor_world_position) =
             camera.viewport_to_world_2d(camera_transform, cursor_position)
         {
-            for (mut material, player_transform) in players.iter_mut() {
+            for (mut material, mut player_transform) in players.iter_mut() {
                 let player_position = player_transform.translation.truncate();
                 let direction = cursor_world_position - player_position;
 
-                // if direction.length() > 0.0 {
-                //     let angle = direction.y.atan2(direction.x);
-                //     let degrees = angle.to_degrees();
+                if direction.length() > 0.0 {
+                    let angle = direction.y.atan2(direction.x);
+                    // let degrees = angle.to_degrees();
 
-                //     // Convert to 0-360 range and rotate so 0° is bottom
-                //     let normalized_degrees = ((if degrees < 0.0 {
-                //         degrees + 360.0
-                //     } else {
-                //         degrees
-                //     }) + 90.0)
-                //         % 360.0;
+                    // // Convert to 0-360 range and rotate so 0° is bottom
+                    // let normalized_degrees = ((if degrees < 0.0 {
+                    //     degrees + 360.0
+                    // } else {
+                    //     degrees
+                    // }) + 90.0)
+                    //     % 360.0;
+
+                    let rotation_z = direction.y.atan2(direction.x);
+                    player_transform.rotation = Quat::from_rotation_z(rotation_z - consts::PI / 2.);
 
                 //     // Map angle ranges to sprite images
                 //     // Bottom=0°, Right=90°, Top=180°, Left=270°
@@ -198,7 +200,7 @@ pub fn player_orientation(
                 //     if let Some(material_handle) = materials.get_mut(&material.0) {
                 //         material_handle.texture = Some(asset_server.load(sprite_path));
                 //     }
-                // }
+                }
             }
         }
     }

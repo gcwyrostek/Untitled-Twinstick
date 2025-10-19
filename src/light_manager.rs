@@ -53,14 +53,6 @@ pub fn setup_lights(mut commands: Commands) {
             LightSource::new(transform.translation, 0.0, 15.0),
         )
     });
-
-    commands.spawn({
-        let transform = Transform::from_xyz(0., 0., 0.);
-        (
-            transform,
-            LightSource::new(transform.translation, 0.0, 15.0),
-        )
-    });
 }
 
 // System to collect LightSource components into the Lights resource

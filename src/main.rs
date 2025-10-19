@@ -79,9 +79,9 @@ fn main() {
         .add_systems(Startup, setup_cursor_icon)
         //Plugin Section
         .add_plugins((
+            player::PlayerPlugin,
             light_manager::LightSourcePlugin,
             menu::MenuPlugin,
-            player::PlayerPlugin,
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
