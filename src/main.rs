@@ -30,6 +30,7 @@ mod wall;
 //mod revive_kit_pickup;
 mod game_over;
 mod slideshow;
+mod collisions;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -94,7 +95,8 @@ fn main() {
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
             wall::WallPlugin,
-        ))
+
+        )).add_plugins((collisions::CollisionsPlugin))
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }
