@@ -22,6 +22,7 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod wall;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -92,6 +93,7 @@ fn main() {
             client::ClientPlugin,
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
+            wall::WallPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
