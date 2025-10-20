@@ -1,19 +1,42 @@
 use bevy::{
     prelude::*,
     reflect::TypePath,
-    render::render_resource::{AsBindGroup, ShaderRef},
+    render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
 };
+use crate::{light_manager::Light};
 
 const PLAYER_MATERIAL_SHADER: &str = "shaders/player_base.wgsl";
+
+#[derive(Clone, ShaderType, Debug)]
+pub struct Lighting {
+    pub ambient_reflection_coefficient: f32,
+    pub ambient_light_intensity: f32,
+    pub diffuse_reflection_coefficient: f32,
+    pub shininess: f32,
+}
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct PlayerBaseMaterial {
     #[uniform(0)]
+    pub lights: [Light; 4],
+
+    #[uniform(1)]
     pub color: LinearRgba,
-    #[texture(1)]
-    #[sampler(2)]
+
+    #[uniform(2)]
+    pub lighting: Lighting,
+
+    #[texture(3)]
+    #[sampler(4)]
     pub texture: Option<Handle<Image>>,
+
+    #[texture(5)]
+    #[sampler(6)]
+    pub normal: Option<Handle<Image>>,
+
+    #[uniform(7)]
+    pub mesh_rotation: f32,
 }
 
 impl Material2d for PlayerBaseMaterial {
