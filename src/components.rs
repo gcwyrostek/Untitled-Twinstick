@@ -1,4 +1,4 @@
-use bevy::{math::bounding::Aabb2d, prelude::*};
+use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::ShaderType};
 
 #[derive(Component)]
 pub struct Health {
@@ -68,4 +68,19 @@ pub struct StaticCollider {
 #[derive(Component, Debug, Clone, Copy)]
 pub struct KinematicCollider {
     pub shape: Aabb2d,
+}
+
+// Light
+#[derive(Component, Debug, Clone, Copy)]
+pub struct LightSource {
+    pub position: Vec3,
+    pub intensity: f32,
+    pub range: f32,
+    pub cone: i32,
+}
+
+impl LightSource {
+    pub fn new(position: Vec3, intensity: f32, range: f32, cone: i32) -> Self {
+        Self { position, intensity, range, cone }
+    }
 }
