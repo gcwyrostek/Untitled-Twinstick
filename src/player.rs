@@ -77,11 +77,18 @@ pub fn setup_player(
     }
 
     commands.spawn((
+        // For any entities that we want to have lighting,
+        // add the following two components.
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
             color: LinearRgba::BLUE,
             texture: Some(asset_server.load("player/player_albedo.png")),
             lighting: crate::player_material::Lighting { 
+                // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing. 
+                // Should be 0 for everything except the player.
+                // 'diffuse_reflection_coefficient' is how much not-shiny light is reflected back.
+                // 'shininess' is what it sounds like. Higher number = shinier.
                 ambient_reflection_coefficient: 0.1, 
                 ambient_light_intensity: 0.1,
                 diffuse_reflection_coefficient: 1.0,

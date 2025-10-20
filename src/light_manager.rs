@@ -3,7 +3,7 @@ use crate::{
 };
 use bevy::{prelude::*, render::render_resource::ShaderType};
 
-// Set number of total lights here
+// Set number of total lights here, as well as in player_base.wgsl. Current limit of 4 light sources
 const NUM_LIGHTS: i32 = 4;
 #[derive(Resource, Default)]
 pub struct Lights {
@@ -28,7 +28,8 @@ pub struct Light {
     pub intensity: f32,
     pub range: f32,
     pub cone: i32,
-    pub _padding: Vec2,
+    pub angle: f32,
+    pub _padding: f32,
 }
 
 pub fn setup_lights(mut commands: Commands) {
@@ -36,14 +37,19 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 1.0, 15.0, 0),
+            // Here's how this works:
+            // If you want point light...'cone' = 0.
+            // For cone lights, 'cone' = angle of the cone.
+            // 'angle' is only for cone lights
+            // range does nothing for now. all lights have infinite range.
+            LightSource::new(transform.translation, 1.0, 15.0, 80, 45.0),
         )
     });
     commands.spawn({
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 10.0, 0),
+            LightSource::new(transform.translation, 0.0, 10.0, 0, 0.0),
         )
     });
     
@@ -51,7 +57,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 15.0, 0),
+            LightSource::new(transform.translation, 0.0, 15.0, 0, 0.0),
         )
     });
 
@@ -59,33 +65,34 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 15.0, 0),
+            LightSource::new(transform.translation, 0.0, 15.0, 0, 0.0),
         )
     });
 }
 
 // System to collect LightSource components into the Lights resource
+//...this resource is used by PlayerBaseMaterial in player_material.rs!
 pub fn collect_lights_into_resource(
     mut lights_resource: ResMut<Lights>,
     lights_query: Query<(&Transform, &LightSource)>,
 ) {
-    // Initialize with empty lights
     let mut light_array = [Light {
         position: Vec3::ZERO,
         intensity: 0.0,
         range: 0.0,
         cone: 0,
-        _padding: Vec2::ZERO,
+        angle: 0.0,
+        _padding: 0.0,
     }; NUM_LIGHTS as usize];
     
-    // Fill the array with actual lights
     for (i, (transform, light_source)) in lights_query.iter().take(NUM_LIGHTS as usize).enumerate() {
         light_array[i] = Light {
             position: transform.translation,
             intensity: light_source.intensity,
             range: light_source.range,
             cone: light_source.cone,
-            _padding: Vec2::ZERO,
+            angle: light_source.angle,
+            _padding: 0.0,
         };
     }
     
@@ -93,9 +100,11 @@ pub fn collect_lights_into_resource(
     lights_resource.num_lights = NUM_LIGHTS;
 }
 
+// For the shader, mesh_rotation must be updated to match the actual rotation of the object.
+// Otherwise, shading will not change when rotating.
 fn update_material_rotation(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
-    query: Query<(&Transform, &MeshMaterial2d<PlayerBaseMaterial>), (Changed<Transform>)>,
+    query: Query<(&Transform, &MeshMaterial2d<PlayerBaseMaterial>), With<Transform>>,
 ) {
     for (transform, mesh_material) in query.iter() {
         if let Some(material) = materials.get_mut(&mesh_material.0) {
