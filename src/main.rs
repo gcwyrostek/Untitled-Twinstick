@@ -89,6 +89,8 @@ fn main() {
             enemy::EnemyPlugin,
             collectible::CollectiblePlugin,
             ui::UIPlugin,
+        ))
+        .add_plugins((
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
@@ -98,7 +100,7 @@ fn main() {
             PickupPlugin,
             wall::WallPlugin,
         ))
-        .add_plugins((collisions::CollisionsPlugin))
+        .add_plugins(collisions::CollisionsPlugin)
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }
