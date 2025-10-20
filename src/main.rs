@@ -22,6 +22,7 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod camera;
 mod wall;
 mod light_manager;
 //mod reticle;
@@ -98,6 +99,7 @@ fn main() {
             client::ClientPlugin,
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
+            camera::CameraPlugin,
             wall::WallPlugin,
         ))
         .add_plugins(collisions::CollisionsPlugin)

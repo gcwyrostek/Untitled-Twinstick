@@ -78,12 +78,13 @@ pub fn setup_player(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     asset_server: Res<AssetServer>,
+    // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
     lights: Res<Lights>,
 ) {
-    if query.is_empty() {
-        commands.spawn(Camera2d);
-    }
+    // if query.is_empty() {
+    //     commands.spawn(Camera2d);
+    // }
 
     commands.spawn((
         // For any entities that we want to have lighting,
