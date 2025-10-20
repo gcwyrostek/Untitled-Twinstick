@@ -17,7 +17,8 @@ impl Plugin for LightSourcePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Lights>()
             .add_systems(Startup, setup_lights)
-            .add_systems(Update, collect_lights_into_resource);
+            .add_systems(Update, collect_lights_into_resource)
+            .add_systems(Update, update_material_rotation);
     }
 }
 
@@ -26,7 +27,8 @@ pub struct Light {
     pub position: Vec3,
     pub intensity: f32,
     pub range: f32,
-    pub _padding: Vec3,
+    pub cone: i32,
+    pub _padding: Vec2,
 }
 
 pub fn setup_lights(mut commands: Commands) {
@@ -34,7 +36,14 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 1.0, 10.0),
+            LightSource::new(transform.translation, 1.0, 15.0, 0),
+        )
+    });
+    commands.spawn({
+        let transform = Transform::from_xyz(0., 0., 0.);
+        (
+            transform,
+            LightSource::new(transform.translation, 0.0, 10.0, 0),
         )
     });
     
@@ -42,7 +51,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 15.0),
+            LightSource::new(transform.translation, 0.0, 15.0, 0),
         )
     });
 
@@ -50,7 +59,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 15.0),
+            LightSource::new(transform.translation, 0.0, 15.0, 0),
         )
     });
 }
@@ -65,7 +74,8 @@ pub fn collect_lights_into_resource(
         position: Vec3::ZERO,
         intensity: 0.0,
         range: 0.0,
-        _padding: Vec3::ZERO,
+        cone: 0,
+        _padding: Vec2::ZERO,
     }; NUM_LIGHTS as usize];
     
     // Fill the array with actual lights
@@ -74,10 +84,23 @@ pub fn collect_lights_into_resource(
             position: transform.translation,
             intensity: light_source.intensity,
             range: light_source.range,
-            _padding: Vec3::ZERO,
+            cone: light_source.cone,
+            _padding: Vec2::ZERO,
         };
     }
     
     lights_resource.lights = light_array;
     lights_resource.num_lights = NUM_LIGHTS;
+}
+
+fn update_material_rotation(
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+    query: Query<(&Transform, &MeshMaterial2d<PlayerBaseMaterial>), (Changed<Transform>)>,
+) {
+    for (transform, mesh_material) in query.iter() {
+        if let Some(material) = materials.get_mut(&mesh_material.0) {
+            let (_, _, z_rotation) = transform.rotation.to_euler(EulerRot::XYZ);
+            material.mesh_rotation = z_rotation;
+        }
+    }
 }

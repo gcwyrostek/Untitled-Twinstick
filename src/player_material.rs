@@ -35,6 +35,9 @@ pub struct PlayerBaseMaterial {
     #[texture(5)]
     #[sampler(6)]
     pub normal: Option<Handle<Image>>,
+
+    #[uniform(7)]
+    pub mesh_rotation: f32,
 }
 
 impl Material2d for PlayerBaseMaterial {
