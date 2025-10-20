@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::render_resource::ShaderType};
+use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::ShaderType};
 
 #[derive(Component)]
 pub struct Health {
@@ -56,6 +56,18 @@ impl Collectible {
     pub fn health(amount: i32) -> Self {
         Self::new(CollectibleKind::Health, amount)
     }
+}
+
+// Colliders
+// Should make a general collision shape interface later
+#[derive(Component, Debug, Clone, Copy)]
+pub struct StaticCollider {
+    pub shape: Aabb2d,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct KinematicCollider {
+    pub shape: Aabb2d,
 }
 
 // Light

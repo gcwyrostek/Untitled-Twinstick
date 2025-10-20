@@ -22,12 +22,14 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod wall;
 mod light_manager;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod collisions;
 mod game_over;
 mod slideshow;
 
@@ -94,7 +96,9 @@ fn main() {
             client::ClientPlugin,
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
+            wall::WallPlugin,
         ))
+        .add_plugins((collisions::CollisionsPlugin))
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }

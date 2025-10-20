@@ -1,7 +1,8 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::LightSource,
+    GameState, components::Health, components::KinematicCollider, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::LightSource,
 };
 use std::f32::consts;
+use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
@@ -67,7 +68,7 @@ impl Velocity {
     }
 }
 
-enum PlayerControl{
+enum PlayerControl {
     Local,
     Network,
 }
@@ -105,6 +106,12 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
+        KinematicCollider {
+            shape: Aabb2d {
+                min: Vec2 { x: 0., y: 0. },
+                max: Vec2 { x: 64., y: 64. },
+            },
+        },
     ));
 } 
 
