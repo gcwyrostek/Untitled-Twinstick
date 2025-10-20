@@ -1,7 +1,7 @@
 use crate::{
-    GameState, components::StaticCollider, components::ZoneBox
+    GameState, components::StaticCollider
 };
-use bevy::{prelude::*, render::render_resource::DownlevelFlags};
+use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
 pub struct WallPlugin;
@@ -17,8 +17,9 @@ pub fn setup_walls(mut commands: Commands, asset_server: Res<AssetServer>) {
             Sprite::from_image(asset_server.load("textures/wall.png")),
             Transform::from_xyz(-100., (i * 64) as f32, 0.),
             StaticCollider{
-                shape: ZoneBox{
-                    dimensions: Vec2 { x: 64.0, y: 64.0 },
+                shape: Aabb2d{
+                    min: Vec2 { x: 0., y: 0. },
+                    max: Vec2 { x: 64., y: 64. }
                 },
             },
         ));

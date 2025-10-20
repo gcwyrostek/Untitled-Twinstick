@@ -1,6 +1,7 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::KinematicCollider, components::ZoneBox,
+    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::KinematicCollider,
 };
+use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
@@ -91,9 +92,10 @@ pub fn setup_player(
         Player,
         Health::new(MAX_HEALTH),
         KinematicCollider{
-            shape: ZoneBox{
-                dimensions: Vec2 { x: 64.0, y: 64.0 },
-            },
+            shape: Aabb2d{
+                min: Vec2 { x: 0., y: 0. },
+                max: Vec2 { x: 64., y: 64. },
+            }
         },
     ));
 }

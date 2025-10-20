@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::bounding::Aabb2d, prelude::*};
 
 #[derive(Component)]
 pub struct Health {
@@ -60,17 +60,12 @@ impl Collectible {
 
 // Colliders
 // Should make a general collision shape interface later
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ZoneBox {
-    pub dimensions: Vec2,
-}
-
 #[derive(Component, Debug, Clone, Copy)]
 pub struct StaticCollider {
-    pub shape: ZoneBox,
+    pub shape: Aabb2d,
 }
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct KinematicCollider {
-    pub shape: ZoneBox,
+    pub shape: Aabb2d,
 }
