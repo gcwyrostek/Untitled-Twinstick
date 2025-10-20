@@ -95,7 +95,7 @@ pub fn collect_lights_into_resource(
 
 fn update_material_rotation(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
-    query: Query<(&Transform, &MeshMaterial2d<PlayerBaseMaterial>), (Changed<Transform>)>,
+    query: Query<(&Transform, &MeshMaterial2d<PlayerBaseMaterial>), Changed<Transform>>,
 ) {
     for (transform, mesh_material) in query.iter() {
         if let Some(material) = materials.get_mut(&mesh_material.0) {
