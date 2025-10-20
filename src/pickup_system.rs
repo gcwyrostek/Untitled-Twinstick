@@ -1,10 +1,5 @@
-use crate::collectible::{
-    Collectible as NewCollectible, CollectibleType as NewCollectibleType, PlayerInventory,
-    pickup_flashlight,
-};
-use crate::components::{
-    Collectible as OldCollectible, CollectibleKind as OldCollectibleKind, Health,
-};
+use crate::components::{Collectible as OldCollectible, CollectibleKind as OldCollectibleKind, Health};
+use crate::collectible::{pickup_flashlight, Collectible as NewCollectible, CollectibleType as NewCollectibleType, PlayerInventory};
 use crate::player::Player;
 use bevy::prelude::*;
 
@@ -121,14 +116,10 @@ fn pickup_system(
                 }
             }
             NewCollectibleType::Ammo(amount) => {
-                ammo_writer.write(AmmoPickupEvent {
-                    amount: amount.max(0),
-                });
+                ammo_writer.write(AmmoPickupEvent { amount: amount.max(0) });
             }
             NewCollectibleType::Battery(amount) => {
-                battery_writer.write(BatteryPickupEvent {
-                    amount: amount.max(0),
-                });
+                battery_writer.write(BatteryPickupEvent { amount: amount.max(0) });
             }
             NewCollectibleType::ReviveKit => {
                 if let Some(h) = player_health_opt.as_deref_mut() {
@@ -172,18 +163,10 @@ fn attach_flashlight_to_player(
             // Attach if missing
             if !has_child_flashlight {
                 // Compensate for parent's scale so flashlight appears at original pixel size
-                let sx = if player_tf.scale.x != 0.0 {
-                    1.0 / player_tf.scale.x
-                } else {
-                    1.0
-                };
-                let sy = if player_tf.scale.y != 0.0 {
-                    1.0 / player_tf.scale.y
-                } else {
-                    1.0
-                };
+                let sx = if player_tf.scale.x != 0.0 { 1.0 / player_tf.scale.x } else { 1.0 };
+                let sy = if player_tf.scale.y != 0.0 { 1.0 / player_tf.scale.y } else { 1.0 };
                 // Also compensate the local offset so it stays ~20px to the right visually
-                let offset_x = 40.0 * sx; // 20px to the right of the player, increase to push it further right, decrease to push it further left
+                let offset_x = 40.0 * sx;   // 20px to the right of the player, increase to push it further right, decrease to push it further left
                 commands.entity(player_entity).with_children(|cb| {
                     cb.spawn((
                         Sprite::from_image(asset_server.load("textures/flashlight.png")),
