@@ -18,8 +18,7 @@ pub fn setup_walls(mut commands: Commands, asset_server: Res<AssetServer>) {
             Transform::from_xyz(-100., (i * 64) as f32, 0.),
             StaticCollider{
                 shape: ZoneBox{
-                    nw_corner: Vec2 { x: 0.0, y: 0.0 },
-                    se_corner: Vec2 { x: 64.0, y: 64.0},
+                    dimensions: Vec2 { x: 64.0, y: 64.0 },
                 },
             },
         ));

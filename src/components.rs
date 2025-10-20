@@ -62,8 +62,7 @@ impl Collectible {
 // Should make a general collision shape interface later
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ZoneBox {
-    pub nw_corner: Vec2,
-    pub se_corner: Vec2,
+    pub dimensions: Vec2,
 }
 
 #[derive(Component, Debug, Clone, Copy)]
