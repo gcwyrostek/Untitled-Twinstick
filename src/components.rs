@@ -57,3 +57,21 @@ impl Collectible {
         Self::new(CollectibleKind::Health, amount)
     }
 }
+
+// Colliders
+// Should make a general collision shape interface later
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ZoneBox {
+    pub nw_corner: Vec2,
+    pub se_corner: Vec2,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct StaticCollider {
+    pub shape: ZoneBox,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct KinematicCollider {
+    pub shape: ZoneBox,
+}
