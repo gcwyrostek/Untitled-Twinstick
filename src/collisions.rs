@@ -1,18 +1,13 @@
-use crate::{
-    GameState, components::KinematicCollider, components::StaticCollider
-};
-use bevy::{math::bounding::{IntersectsVolume}, prelude::*, math::bounding::Aabb2d};
+use crate::{GameState, components::KinematicCollider, components::StaticCollider};
+use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 pub struct CollisionsPlugin;
 impl Plugin for CollisionsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            do_collisions.run_if(in_state(GameState::Playing)),
-        );
+        app.add_systems(Update, do_collisions.run_if(in_state(GameState::Playing)));
     }
 }
- 
+
 fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
     let a_min = pushee.min;
     let a_max = pushee.max;
@@ -38,13 +33,16 @@ fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
 
     // Choose the axis with the least penetration
     if overlap_x.abs() < overlap_y.abs() {
-        return Vec2::new(overlap_x, 0.0)
+        return Vec2::new(overlap_x, 0.0);
     } else {
-        return Vec2::new(0.0, overlap_y)
+        return Vec2::new(0.0, overlap_y);
     }
 }
 
-pub fn do_collisions(kinematics: Query<(&KinematicCollider, &mut Transform), Without<StaticCollider>>, statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>) {
+pub fn do_collisions(
+    kinematics: Query<(&KinematicCollider, &mut Transform), Without<StaticCollider>>,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+) {
     for (kc, mut kt) in kinematics {
         for (sc, st) in &statics {
             let mut transformed_kc_shape = kc.shape.clone();
@@ -55,12 +53,11 @@ pub fn do_collisions(kinematics: Query<(&KinematicCollider, &mut Transform), Wit
             transformed_sc_shape.min += st.translation.truncate();
             transformed_sc_shape.max += st.translation.truncate();
 
-
             let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
             if colliding {
-                kt.translation = kt.translation + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+                kt.translation = kt.translation
+                    + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
             }
         }
     }
 }
-
