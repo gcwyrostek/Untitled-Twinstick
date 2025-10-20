@@ -1,6 +1,6 @@
 use crate::GameState;
-use crate::player::Player;
 use crate::player::NetControl;
+use crate::player::Player;
 use bevy::prelude::*;
 use std::net::UdpSocket;
 
@@ -52,9 +52,9 @@ fn server_run(
             }
             //info!("{:?} + {:?} + {:?}", amt, src, buf);
             /*socket
-                .socket
-                .send_to(&[1; 10], src)
-                .expect("couldn't send data");*/
+            .socket
+            .send_to(&[1; 10], src)
+            .expect("couldn't send data");*/
         }
         Err(e) => {
             //info!("Nothing");

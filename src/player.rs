@@ -78,7 +78,7 @@ impl NetControl {
 }
 
 #[derive(PartialEq)]
-enum PlayerControl{
+enum PlayerControl {
     Local,
     Network,
 }
@@ -109,7 +109,7 @@ pub fn setup_player(
         NetControl::new(PlayerControl::Local, 0),
     ));
 
-     commands.spawn((
+    commands.spawn((
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
             color: LinearRgba::BLACK,
@@ -132,7 +132,6 @@ pub fn player_movement(
 ) {
     //Basic Player
     for (mut transform, mut velocity, mut netcontrol) in player {
-
         let mut dir = Vec2::ZERO;
 
         if netcontrol.player_type == PlayerControl::Local {
@@ -151,8 +150,7 @@ pub fn player_movement(
             if input.pressed(KeyCode::KeyS) {
                 dir.y -= 1.;
             }
-        }
-        else {
+        } else {
             let input_str = format!("{:08b}", netcontrol.net_input);
             //info!(input_str);
             if input_str.chars().nth(1).unwrap() == '1' {
@@ -170,7 +168,6 @@ pub fn player_movement(
             if input_str.chars().nth(2).unwrap() == '1' {
                 dir.y -= 1.;
             }
-
         }
 
         let deltat = time.delta_secs();
@@ -186,7 +183,7 @@ pub fn player_movement(
         let change = **velocity * deltat;
 
         transform.translation += change.extend(0.);
-    }    
+    }
 }
 
 pub fn player_orientation(

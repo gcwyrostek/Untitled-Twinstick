@@ -20,7 +20,10 @@ impl Plugin for ClientPlugin {
                 client_connect,
             ),
         )
-        .add_systems(FixedUpdate, input_converter.run_if(in_state(GameState::Joining)))
+        .add_systems(
+            FixedUpdate,
+            input_converter.run_if(in_state(GameState::Joining)),
+        )
         .add_systems(OnExit(GameState::Playing), client_close);
     }
 }
