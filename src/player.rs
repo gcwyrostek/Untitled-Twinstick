@@ -1,5 +1,5 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial,
+    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::KinematicCollider, components::ZoneBox,
 };
 use bevy::prelude::*;
 use bevy::time::Timer;
@@ -90,6 +90,12 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
+        KinematicCollider{
+            shape: ZoneBox{
+                nw_corner: Vec2 { x: 0.0, y: 0.0 },
+                se_corner: Vec2 { x: 64.0, y: 64.0},
+            },
+        },
     ));
 }
 
