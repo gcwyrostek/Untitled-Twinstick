@@ -68,10 +68,11 @@ pub struct NetControl {
     pub player_id: u8,
 }
 impl NetControl {
-    fn new(ptype: PlayerControl) -> Self {
+    fn new(ptype: PlayerControl, pid: u8) -> Self {
         Self {
             player_type: ptype,
             net_input: 0,
+            player_id: pid,
         }
     }
 }
@@ -105,7 +106,7 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
-        NetControl::new(PlayerControl::Local),
+        NetControl::new(PlayerControl::Local, 0),
     ));
 
      commands.spawn((
@@ -120,7 +121,7 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
-        NetControl::new(PlayerControl::Network),
+        NetControl::new(PlayerControl::Network, 1),
     ));
 }
 
