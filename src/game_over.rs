@@ -18,7 +18,11 @@ impl Plugin for GameOverPlugin {
 #[derive(Component)]
 pub struct GameOverScreen;
 
-pub fn display_game_over(mut commands: Commands) {
+pub fn display_game_over(mut commands: Commands, query: Query<Entity, With<Camera>>) {
+    if query.is_empty() {
+        commands.spawn(Camera2d);
+    }
+
     commands
         .spawn((
             Node {
