@@ -29,6 +29,7 @@ mod light_manager;
 //mod guns;
 //mod revive_kit_pickup;
 mod game_over;
+mod lobby;
 mod slideshow;
 
 const WIN_W: f32 = 1280.;
@@ -39,6 +40,7 @@ enum GameState {
     #[default]
     Menu,
     Playing,
+    Lobby,
     Joining,
     Credits,
     GameOver,
@@ -95,6 +97,7 @@ fn main() {
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
         ))
+        .add_plugins((lobby::LobbyPlugin,))
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }
