@@ -162,8 +162,8 @@ pub fn player_movement(
 
     //keep player in bounds
     let max = Vec3::new(
-        WIN_W / 2. - PLAYER_SIZE / 2.,
-        WIN_H / 2. - PLAYER_SIZE / 2.,
+        WIN_W*2. / 2. - PLAYER_SIZE / 2.,
+        WIN_H*2. / 2. - PLAYER_SIZE / 2.,
         0.,
     );
 
