@@ -32,6 +32,7 @@ mod light_manager;
 //mod revive_kit_pickup;
 mod collisions;
 mod game_over;
+mod lobby;
 mod slideshow;
 
 const WIN_W: f32 = 1280.;
@@ -42,6 +43,7 @@ enum GameState {
     #[default]
     Menu,
     Playing,
+    Lobby,
     Joining,
     Credits,
     GameOver,
@@ -102,7 +104,10 @@ fn main() {
             camera::CameraPlugin,
             wall::WallPlugin,
         ))
-        .add_plugins(collisions::CollisionsPlugin)
+        .add_plugins((
+            lobby::LobbyPlugin,
+            collisions::CollisionsPlugin,
+        ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }
