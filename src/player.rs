@@ -1,7 +1,8 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::LightSource,
+    GameState, components::Health, components::KinematicCollider, events::DamagePlayerEvent, player_material::PlayerBaseMaterial, components::LightSource,
 };
 use std::f32::consts;
+use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
@@ -67,7 +68,7 @@ impl Velocity {
     }
 }
 
-enum PlayerControl{
+enum PlayerControl {
     Local,
     Network,
 }
@@ -77,19 +78,27 @@ pub fn setup_player(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     asset_server: Res<AssetServer>,
+    // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
     lights: Res<Lights>,
 ) {
-    if query.is_empty() {
-        commands.spawn(Camera2d);
-    }
+    // if query.is_empty() {
+    //     commands.spawn(Camera2d);
+    // }
 
     commands.spawn((
+        // For any entities that we want to have lighting,
+        // add the following two components.
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
             color: LinearRgba::BLUE,
             texture: Some(asset_server.load("player/player_albedo.png")),
             lighting: crate::player_material::Lighting { 
+                // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing. 
+                // Should be 0 for everything except the player.
+                // 'diffuse_reflection_coefficient' is how much not-shiny light is reflected back.
+                // 'shininess' is what it sounds like. Higher number = shinier.
                 ambient_reflection_coefficient: 0.1, 
                 ambient_light_intensity: 0.1,
                 diffuse_reflection_coefficient: 1.0,
@@ -105,6 +114,12 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
+        KinematicCollider {
+            shape: Aabb2d {
+                min: Vec2 { x: 0., y: 0. },
+                max: Vec2 { x: 64., y: 64. },
+            },
+        },
     ));
 } 
 

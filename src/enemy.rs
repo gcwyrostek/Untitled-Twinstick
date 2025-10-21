@@ -94,6 +94,7 @@ pub fn setup_enemy(
 ) {
     for i in 0..=16 {
         commands.spawn((
+        // See player.rs for more info about the phong-lit material.
         Mesh2d(meshes.add(Rectangle::default())),
         MeshMaterial2d(materials.add(PlayerBaseMaterial {
             color: LinearRgba::BLUE,

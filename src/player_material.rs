@@ -5,7 +5,6 @@ use bevy::{
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
 };
 use crate::{light_manager::Light};
-use crate::{light_manager::Lights};
 
 const PLAYER_MATERIAL_SHADER: &str = "shaders/player_base.wgsl";
 
