@@ -59,7 +59,6 @@ impl FireCooldown {
 pub struct Velocity {
     velocity: Vec2,
 }
-
 impl Velocity {
     fn new() -> Self {
         Self {
@@ -68,6 +67,23 @@ impl Velocity {
     }
 }
 
+#[derive(Component)]
+pub struct NetControl {
+    player_type: PlayerControl,
+    pub net_input: u8,
+    pub player_id: u8,
+}
+impl NetControl {
+    fn new(ptype: PlayerControl, pid: u8) -> Self {
+        Self {
+            player_type: ptype,
+            net_input: 0,
+            player_id: pid,
+        }
+    }
+}
+
+#[derive(PartialEq)]
 enum PlayerControl {
     Local,
     Network,
@@ -114,6 +130,22 @@ pub fn setup_player(
         FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
         Player,
         Health::new(MAX_HEALTH),
+        NetControl::new(PlayerControl::Local, 0),
+    ));
+
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            color: LinearRgba::BLACK,
+            texture: Some(asset_server.load("player/blueberryman.png")),
+        })),
+        Transform::from_xyz(-300., 0., 10.).with_scale(Vec3::splat(64.)), // Change size of player here: current size: 64. (makes player 64x larger)
+        // you can have a smaller player with 32 and larger player with 128
+        Velocity::new(),
+        FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
+        Player,
+        Health::new(MAX_HEALTH),
+        NetControl::new(PlayerControl::Network, 1),
         KinematicCollider {
             shape: Aabb2d {
                 min: Vec2 { x: 0., y: 0. },
@@ -126,40 +158,62 @@ pub fn setup_player(
 pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    player: Single<(&mut Transform, &mut Velocity), With<Player>>,
+    player: Query<(&mut Transform, &mut Velocity, &mut NetControl), With<Player>>,
 ) {
-    let (mut transform, mut velocity) = player.into_inner();
+    //Basic Player
+    for (mut transform, mut velocity, mut netcontrol) in player {
+        let mut dir = Vec2::ZERO;
 
-    let mut dir = Vec2::ZERO;
+        if netcontrol.player_type == PlayerControl::Local {
+            if input.pressed(KeyCode::KeyA) {
+                dir.x -= 1.;
+            }
 
-    if input.pressed(KeyCode::KeyA) {
-        dir.x -= 1.;
+            if input.pressed(KeyCode::KeyD) {
+                dir.x += 1.;
+            }
+
+            if input.pressed(KeyCode::KeyW) {
+                dir.y += 1.;
+            }
+
+            if input.pressed(KeyCode::KeyS) {
+                dir.y -= 1.;
+            }
+        } else {
+            let input_str = format!("{:08b}", netcontrol.net_input);
+            //info!(input_str);
+            if input_str.chars().nth(1).unwrap() == '1' {
+                dir.x -= 1.;
+            }
+
+            if input_str.chars().nth(3).unwrap() == '1' {
+                dir.x += 1.;
+            }
+
+            if input_str.chars().nth(0).unwrap() == '1' {
+                dir.y += 1.;
+            }
+
+            if input_str.chars().nth(2).unwrap() == '1' {
+                dir.y -= 1.;
+            }
+        }
+
+        let deltat = time.delta_secs();
+        let accel = ACCEL_RATE * deltat;
+
+        **velocity = if dir.length() > 0. {
+            (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+        } else if velocity.length() > accel {
+            **velocity + (velocity.normalize_or_zero() * -accel)
+        } else {
+            Vec2::ZERO
+        };
+        let change = **velocity * deltat;
+
+        transform.translation += change.extend(0.);
     }
-
-    if input.pressed(KeyCode::KeyD) {
-        dir.x += 1.;
-    }
-
-    if input.pressed(KeyCode::KeyW) {
-        dir.y += 1.;
-    }
-
-    if input.pressed(KeyCode::KeyS) {
-        dir.y -= 1.;
-    }
-
-    let deltat = time.delta_secs();
-    let accel = ACCEL_RATE * deltat;
-
-    **velocity = if dir.length() > 0. {
-        (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
-    } else if velocity.length() > accel {
-        **velocity + (velocity.normalize_or_zero() * -accel)
-    } else {
-        Vec2::ZERO
-    };
-    let change = **velocity * deltat;
-
     //keep player in bounds
     let max = Vec3::new(
         WIN_W*2. / 2. - PLAYER_SIZE / 2.,

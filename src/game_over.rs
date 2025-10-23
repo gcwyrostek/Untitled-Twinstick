@@ -1,16 +1,15 @@
 use crate::GameState;
-use crate::player::Player;
-use crate::enemy::Enemy;
 use crate::collectible::Collectible;
-use crate::ui::HealthBar;
+use crate::enemy::Enemy;
+use crate::player::Player;
 use crate::tiling::Tile;
-use bevy::{prelude::*};
+use crate::ui::HealthBar;
+use bevy::prelude::*;
 
 pub struct GameOverPlugin;
 impl Plugin for GameOverPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::GameOver), display_game_over)
+        app.add_systems(OnEnter(GameState::GameOver), display_game_over)
             .add_systems(Update, wait_for_input.run_if(in_state(GameState::GameOver)));
     }
 }
