@@ -1,12 +1,11 @@
 use crate::GameState;
-use bevy::{prelude::*};
 use crate::server::inFlag;
+use bevy::prelude::*;
 
 pub struct LobbyPlugin;
 impl Plugin for LobbyPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::Lobby), display_lobby)
+        app.add_systems(OnEnter(GameState::Lobby), display_lobby)
             .add_systems(Update, wait_for_input.run_if(in_state(GameState::Lobby)));
     }
 }

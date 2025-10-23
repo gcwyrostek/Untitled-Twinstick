@@ -1,10 +1,10 @@
+use crate::light_manager::Light;
 use bevy::{
     prelude::*,
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::{AlphaMode2d, Material2d, Material2dPlugin},
 };
-use crate::{light_manager::Light};
 
 const PLAYER_MATERIAL_SHADER: &str = "shaders/player_base.wgsl";
 

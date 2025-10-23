@@ -1,8 +1,6 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, player::Player,
-    projectile::Projectile,
-    light_manager::Lights,
-    player_material::PlayerBaseMaterial,
+    GameState, components::Health, events::DamagePlayerEvent, light_manager::Lights,
+    player::Player, player_material::PlayerBaseMaterial, projectile::Projectile,
 };
 use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
@@ -94,25 +92,25 @@ pub fn setup_enemy(
 ) {
     for i in 0..=16 {
         commands.spawn((
-        // See player.rs for more info about the phong-lit material.
-        Mesh2d(meshes.add(Rectangle::default())),
-        MeshMaterial2d(materials.add(PlayerBaseMaterial {
-            color: LinearRgba::BLUE,
-            texture: Some(asset_server.load("enemy/enemy_standard_albedo.png")),
-            lighting: crate::player_material::Lighting { 
-                ambient_reflection_coefficient: 0.0, 
-                ambient_light_intensity: 0.0,
-                diffuse_reflection_coefficient: 1.0,
-                shininess: 40.0,
-            },
-            lights: lights.lights,
-            normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
-            mesh_rotation: 0.0,
-        })),
-        Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
-        Velocity::new(),
-        Enemy::new(EnemyType::Normal),
-        Health::new(NORMAL_HEALTH),
+            // See player.rs for more info about the phong-lit material.
+            Mesh2d(meshes.add(Rectangle::default())),
+            MeshMaterial2d(materials.add(PlayerBaseMaterial {
+                color: LinearRgba::BLUE,
+                texture: Some(asset_server.load("enemy/enemy_standard_albedo.png")),
+                lighting: crate::player_material::Lighting {
+                    ambient_reflection_coefficient: 0.0,
+                    ambient_light_intensity: 0.0,
+                    diffuse_reflection_coefficient: 1.0,
+                    shininess: 40.0,
+                },
+                lights: lights.lights,
+                normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
+                mesh_rotation: 0.0,
+            })),
+            Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
+            Velocity::new(),
+            Enemy::new(EnemyType::Normal),
+            Health::new(NORMAL_HEALTH),
         ));
     }
     // for i in 0..=3 {
