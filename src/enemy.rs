@@ -1,12 +1,14 @@
 use crate::{
     GameState, components::Health, events::DamagePlayerEvent, player::Player,
     projectile::Projectile,
+    light_manager::Lights,
+    player_material::PlayerBaseMaterial,
 };
 use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
 // Stats for different enemy types!
-const NORMAL_SPEED: f32 = 150.;
+const NORMAL_SPEED: f32 = 100.;
 const STRONG_SPEED: f32 = 100.;
 const FAST_SPEED: f32 = 600.;
 
@@ -83,36 +85,56 @@ impl Velocity {
     }
 }
 
-pub fn setup_enemy(mut commands: Commands, asset_server: Res<AssetServer>) {
-    for i in 0..=9 {
+pub fn setup_enemy(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    lights: Res<Lights>,
+) {
+    for i in 0..=16 {
         commands.spawn((
-            Sprite::from_image(asset_server.load("enemy/enemy_standard_albedo.png")),
-            Transform::from_xyz(300., (i * 100) as f32, 10.).with_scale(Vec3::new(1., 1., 1.)),
-            Velocity::new(),
-            Enemy::new(EnemyType::Normal),
-            Health::new(NORMAL_HEALTH),
+        // See player.rs for more info about the phong-lit material.
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            color: LinearRgba::BLUE,
+            texture: Some(asset_server.load("enemy/enemy_standard_albedo.png")),
+            lighting: crate::player_material::Lighting { 
+                ambient_reflection_coefficient: 0.0, 
+                ambient_light_intensity: 0.0,
+                diffuse_reflection_coefficient: 1.0,
+                shininess: 40.0,
+            },
+            lights: lights.lights,
+            normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
+            mesh_rotation: 0.0,
+        })),
+        Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
+        Velocity::new(),
+        Enemy::new(EnemyType::Normal),
+        Health::new(NORMAL_HEALTH),
         ));
     }
-    for i in 0..=3 {
-        commands.spawn((
-            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz(-1000., (i * 300) as f32, 10.)
-                .with_scale(Vec3::new(1.25, 1.25, 1.25)),
-            Velocity::new(),
-            Enemy::new(EnemyType::Strong),
-            Health::new(STRONG_HEALTH),
-        ));
-    }
-    for i in 0..=12 {
-        commands.spawn((
-            Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
-            Transform::from_xyz((i * 1000) as f32, 15000., 10.)
-                .with_scale(Vec3::new(0.75, 0.75, 0.75)),
-            Velocity::new(),
-            Enemy::new(EnemyType::Fast),
-            Health::new(FAST_HEALTH),
-        ));
-    }
+    // for i in 0..=3 {
+    //     commands.spawn((
+    //         Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+    //         Transform::from_xyz(-1000., (i * 300) as f32, 10.)
+    //             .with_scale(Vec3::new(1.25, 1.25, 1.25)),
+    //         Velocity::new(),
+    //         Enemy::new(EnemyType::Strong),
+    //         Health::new(STRONG_HEALTH),
+    //     ));
+    // }
+    // for i in 0..=12 {
+    //     commands.spawn((
+    //         Sprite::from_image(asset_server.load("enemy/enemy_strong_albedo.png")),
+    //         Transform::from_xyz((i * 1000) as f32, 15000., 10.)
+    //             .with_scale(Vec3::new(0.75, 0.75, 0.75)),
+    //         Velocity::new(),
+    //         Enemy::new(EnemyType::Fast),
+    //         Health::new(FAST_HEALTH),
+    //     ));
+    // }
 }
 
 pub fn enemy_chase_velocity(
@@ -220,14 +242,20 @@ pub fn all_enemies_defeated(
     all_enemies: Query<&Health, With<Enemy>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let mut all_enemies_dead = true;
-    for enemy in all_enemies.iter() {
-        if enemy.is_dead() == false {
-            all_enemies_dead = false;
-            break;
-        }
-    }
-    if all_enemies_dead {
-        next_state.set(GameState::GameOver);
-    }
+    //
+    // AAAAAAAAA!!!!!!!!!!!!!!
+    // UNCOMMENT THIS!!! TEMPORARILY COMMENTED OUT FOR DEMO!!!!
+    // AAAAAAAAAAAAAA!!!!!!!!!!!!!!!!!!!!!
+    //
+    //
+    // let mut all_enemies_dead = true;
+    // for enemy in all_enemies.iter() {
+    //     if enemy.is_dead() == false {
+    //         all_enemies_dead = false;
+    //         break;
+    //     }
+    // }
+    // if all_enemies_dead {
+    //     next_state.set(GameState::GameOver);
+    // }
 }

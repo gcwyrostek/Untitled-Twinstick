@@ -215,7 +215,7 @@ fn start_on_input(
             match menu_button {
                 MenuButton::Host => {
                     info!("host button pressed.");
-                    next_state.set(GameState::Playing);
+                    next_state.set(GameState::Lobby);
                 }
                 MenuButton::Join => {
                     info!("join button pressed.");

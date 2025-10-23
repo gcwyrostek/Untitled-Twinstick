@@ -22,12 +22,17 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod camera;
+mod wall;
+mod light_manager;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
 //mod guns;
 //mod revive_kit_pickup;
+mod collisions;
 mod game_over;
+mod lobby;
 mod slideshow;
 
 const WIN_W: f32 = 1280.;
@@ -38,6 +43,7 @@ enum GameState {
     #[default]
     Menu,
     Playing,
+    Lobby,
     Joining,
     Credits,
     GameOver,
@@ -78,13 +84,16 @@ fn main() {
         .add_systems(Startup, setup_cursor_icon)
         //Plugin Section
         .add_plugins((
-            menu::MenuPlugin,
             player::PlayerPlugin,
+            light_manager::LightSourcePlugin,
+            menu::MenuPlugin,
             tiling::TilingPlugin,
             projectile::ProjectilePlugin,
             enemy::EnemyPlugin,
             collectible::CollectiblePlugin,
             ui::UIPlugin,
+        ))
+        .add_plugins((
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
@@ -92,6 +101,12 @@ fn main() {
             client::ClientPlugin,
             keypress_encoder::KeyEncodePlugin,
             PickupPlugin,
+            camera::CameraPlugin,
+            wall::WallPlugin,
+        ))
+        .add_plugins((
+            lobby::LobbyPlugin,
+            collisions::CollisionsPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();

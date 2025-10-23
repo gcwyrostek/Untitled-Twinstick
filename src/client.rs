@@ -50,7 +50,7 @@ fn client_connect(socket: ResMut<SocketResource>) {
     let mut buf = [0; 10];
     socket
         .socket
-        .send_to(&[1; 10], "127.0.0.1:2525")
+        .send_to(&[144], "127.0.0.1:2525")
         .expect("couldn't send data");
     match socket.socket.recv_from(&mut buf) {
         Ok((amt, src)) => {

@@ -1,4 +1,5 @@
 use crate::{GameState, WIN_H, WIN_W};
+use crate::camera::MapBounds;
 use bevy::prelude::*;
 
 const TILE_SIZE: u32 = 128;
@@ -23,15 +24,21 @@ pub fn setup_tiling(
     let ground_layout_len = ground_layout.textures.len();
     let ground_layout_handle = texture_atlases.add(ground_layout);
 
+    // Map is 2x the window size
+    let map_width = WIN_W * 2.0;
+    let map_height = WIN_H * 2.0;
+
     //We currently only tile over the 1280x720 window, we can adjust this to instead work with level size
-    let x_bound = WIN_W / 2. - (TILE_SIZE as f32) / 2.;
-    let y_bound = WIN_H / 2. - (TILE_SIZE as f32) / 2.;
+    let x_bound = map_width / 2.0 - (TILE_SIZE as f32) / 2.0;
+    let y_bound = map_height / 2.0 - (TILE_SIZE as f32) / 2.0;
 
     let mut x = 0;
     let mut y = 0;
     let mut t = Vec3::new(-x_bound, -y_bound, -10.);
-    while (y as f32) * (TILE_SIZE as f32) < WIN_H {
-        while (x as f32) * (TILE_SIZE as f32) < WIN_W {
+    
+    // Tile the entire map area
+    while (y as f32) * (TILE_SIZE as f32) < map_height {
+        while (x as f32) * (TILE_SIZE as f32) < map_width {
             commands.spawn((
                 Sprite::from_atlas_image(
                     ground_handle.clone(),
@@ -58,4 +65,13 @@ pub fn setup_tiling(
         y += 1;
         t += Vec3::new(0., (y as f32) * (TILE_SIZE as f32), 0.);
     }
+
+    // Insert map bounds resource
+    commands.insert_resource(MapBounds {
+        width: map_width,
+        height: map_height,
+    });
+
+    info!("Map bounds set to width: {}, height: {}", map_width, map_height);
+    info!("Total tiles spawned: {}", x * y);
 }
