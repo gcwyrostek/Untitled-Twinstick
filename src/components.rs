@@ -82,6 +82,12 @@ pub struct LightSource {
 
 impl LightSource {
     pub fn new(position: Vec3, intensity: f32, range: f32, cone: i32, angle: f32) -> Self {
-        Self { position, intensity, range, cone, angle }
+        Self {
+            position,
+            intensity,
+            range,
+            cone,
+            angle,
+        }
     }
 }

@@ -4,8 +4,7 @@ use bevy::prelude::*;
 pub struct UIPlugin;
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::Playing), setup_ui)
+        app.add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(OnExit(GameState::Playing), cleanup_ui)
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
@@ -61,18 +60,20 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-
 pub fn player_damage(
     mut events: EventReader<DamagePlayerEvent>,
     mut health_bar_q: Query<&mut Node, With<HealthBar>>,
     players: Query<(Entity, &Health), With<Player>>,
 ) {
-    let Ok(mut node) = health_bar_q.single_mut() else { return; };
-    
+    let Ok(mut node) = health_bar_q.single_mut() else {
+        return;
+    };
+
     for damage_event in events.read() {
         for (player_entity, player_health) in players.iter() {
             if damage_event.target == player_entity {
-                let fraction = (player_health.current as f32 / player_health.max as f32).clamp(0.0, 1.0);
+                let fraction =
+                    (player_health.current as f32 / player_health.max as f32).clamp(0.0, 1.0);
                 node.height = Val::Px(HEALTH_BAR_H * fraction);
             }
         }

@@ -8,12 +8,14 @@ use bevy::{
 use crate::pickup_system::PickupPlugin;
 
 // Game modules
+mod camera;
 mod client;
 mod collectible;
 mod components;
 mod enemy;
 mod events;
 mod keypress_encoder;
+mod light_manager;
 mod menu;
 mod pickup_system;
 mod player;
@@ -22,9 +24,7 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
-mod camera;
 mod wall;
-mod light_manager;
 //mod reticle;
 //mod ground_tiles;
 //mod ammo_pickup;
@@ -104,10 +104,7 @@ fn main() {
             camera::CameraPlugin,
             wall::WallPlugin,
         ))
-        .add_plugins((
-            lobby::LobbyPlugin,
-            collisions::CollisionsPlugin,
-        ))
+        .add_plugins((lobby::LobbyPlugin, collisions::CollisionsPlugin))
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }

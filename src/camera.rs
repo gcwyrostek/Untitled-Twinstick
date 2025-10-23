@@ -1,6 +1,6 @@
-use bevy::prelude::*;
 use crate::GameState;
 use crate::player::Player;
+use bevy::prelude::*;
 
 #[derive(Resource, Clone, Copy)]
 pub struct MapBounds {
@@ -16,24 +16,17 @@ pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::Playing), setup_game_camera)
+        app.add_systems(OnEnter(GameState::Playing), setup_game_camera)
             .add_systems(OnExit(GameState::Playing), cleanup_game_camera)
             .add_systems(Update, camera_follow.run_if(in_state(GameState::Playing)));
     }
 }
 
 fn setup_game_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera2d,
-        GameCamera,
-    ));
+    commands.spawn((Camera2d, GameCamera));
 }
 
-fn cleanup_game_camera(
-    mut commands: Commands,
-    query: Query<Entity, With<GameCamera>>,
-) {
+fn cleanup_game_camera(mut commands: Commands, query: Query<Entity, With<GameCamera>>) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
@@ -45,19 +38,19 @@ fn camera_follow(
     player_q: Query<&Transform, With<Player>>,
     mut cam_q: Query<&mut Transform, (With<Camera2d>, With<GameCamera>, Without<Player>)>,
 ) {
-    let Ok(player_tf) = player_q.single() else { 
-        return; 
+    let Ok(player_tf) = player_q.single() else {
+        return;
     };
 
-    let Ok(mut cam_tf) = cam_q.single_mut() else { 
-        return; 
+    let Ok(mut cam_tf) = cam_q.single_mut() else {
+        return;
     };
 
     let window = match windows.iter().next() {
         Some(w) => w,
         None => return,
     };
-    
+
     let half_w = window.width() * 0.5;
     let half_h = window.height() * 0.5;
 

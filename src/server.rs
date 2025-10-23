@@ -33,9 +33,7 @@ fn server_init(mut commands: Commands) {
     commands.insert_resource(SocketResource {
         socket: UdpSocket::bind(IP_CONST).expect("ERROR"),
     });
-    commands.insert_resource(inFlag {
-        ready: false,
-    });
+    commands.insert_resource(inFlag { ready: false });
 }
 
 fn server_close(mut commands: Commands) {
