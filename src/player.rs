@@ -140,7 +140,7 @@ pub fn setup_player(
         },
     ));
 
-    commands.spawn((
+    /*commands.spawn((
         // For any entities that we want to have lighting,
         // add the following two components.
         Mesh2d(meshes.add(Rectangle::default())),
@@ -175,7 +175,7 @@ pub fn setup_player(
                 max: Vec2 { x: 64., y: 64. },
             },
         },
-    ));
+    ));*/
 }
 
 pub fn player_movement(
