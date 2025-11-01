@@ -34,6 +34,7 @@ mod game_over;
 mod lobby;
 mod slideshow;
 mod net_control;
+mod local_control;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -79,11 +80,14 @@ fn main() {
         }))
         // GameState init
         .init_state::<GameState>()
-        .add_plugins(FrameTimeDiagnosticsPlugin{
+
+        //FPS Counter Plugin
+        /*.add_plugins(FrameTimeDiagnosticsPlugin{
             max_history_length: 20,
             smoothing_factor: 0.1,
         })
-        .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(LogDiagnosticsPlugin::default())*/
+
         //.insert_resource(Time::<Fixed>::from_hz(10.0))
         // Core game systems
         //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)

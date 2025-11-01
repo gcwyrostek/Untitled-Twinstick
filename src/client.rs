@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::{GameState, player::Player, net_control::NetControl, net_control::PlayerType, local_control::LocalControl};
 use bevy::prelude::*;
 use std::net::UdpSocket;
 
@@ -68,8 +68,11 @@ fn client_connect(socket: ResMut<SocketResource>) {
     }
 }
 
-fn client_run(socket: ResMut<'_, SocketResource>) {
-    let mut buf = [0];
+fn client_run(
+    mut commands: Commands,
+    socket: ResMut<'_, SocketResource>,
+) {
+    let mut buf = [0, 0, 0];
     /*socket
         .socket
         .send_to(&[9; 10], "127.0.0.1:2525")
@@ -78,7 +81,29 @@ fn client_run(socket: ResMut<'_, SocketResource>) {
     match socket.socket.recv_from(&mut buf)
     {
         Ok((amt, src)) => {
-            info!("{:?} + {:?} + {:?}", amt, src, buf); //NEED TO MAKE 
+            //info!("{:?} + {:?} + {:?}", amt, src, buf);
+            match buf[0] {
+
+                //Code 0 -> Game Started. Send player counts for LocalControl initialization
+                0 => {
+                    for i in 0..buf[1] {
+                        if i == buf[2] {
+                            commands.spawn(
+                                LocalControl::new(PlayerType::Local, i)
+                            );
+                            info!("I am player: {}", i);
+                        }
+                        else
+                        {
+                            commands.spawn(
+                                LocalControl::new(PlayerType::Network, i)
+                            );
+                            info!("Created net player: {}", i);
+                        }
+                    }
+                }
+                _ => {info!("Wrong");}
+            }
         }
         Err(e) => {
             //info!("ERROR");

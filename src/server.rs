@@ -131,7 +131,7 @@ fn send_players(
             //info!{"{:?}", i.get_addr()};
             socket
                     .socket
-                    .send_to(&[count.count], i.get_addr())
+                    .send_to(&[0, count.count, i.player_id], i.get_addr())
                     .expect("couldn't send data");
         }
     }

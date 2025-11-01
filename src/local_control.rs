@@ -1,4 +1,4 @@
-use crate::{GameState, player::Player,};
+use crate::{GameState, player::Player, net_control::PlayerType};
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use std::net::{UdpSocket, IpAddr, Ipv4Addr, SocketAddr};
@@ -17,7 +17,8 @@ impl LocalControl {
     pub fn new(ptype: PlayerType, pid: u8) -> Self {
         Self {
             player_type: ptype,
-            p_input: 0,
+            p_pos: Vec2::ZERO,
+            p_mov: Vec2::ZERO,
             p_angle: 0,
             player_id: pid,
         }
@@ -36,12 +37,6 @@ impl LocalControl {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum PlayerType {
-    Local,
-    Network,
 }
 
 pub struct LocalControlPlugin;
