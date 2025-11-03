@@ -1,14 +1,18 @@
 use crate::light_manager::Lights;
 use crate::{
-    GameState, components::Health, components::KinematicCollider, components::LightSource,
-    events::DamagePlayerEvent, local_control::LocalControl, net_control::NetControl,
-    net_control::PlayerType, player_material::PlayerBaseMaterial,
+    components::FlowMap, components::Health, components::KinematicCollider,
+    components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
+    local_control::LocalControl, net_control::NetControl, net_control::PlayerType,
+    player_material::PlayerBaseMaterial, GameState,
 };
 use bevy::math::bounding::Aabb2d;
+use bevy::math::bounding::IntersectsVolume;
 use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
+use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::f32::consts;
 
 const WIN_W: f32 = 1280.;
@@ -27,7 +31,11 @@ impl Plugin for PlayerPlugin {
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
             )
-            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
+            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
+            .add_systems(
+                Update,
+                player_calculate_flow.run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
@@ -109,7 +117,54 @@ pub fn setup_player(
                     max: Vec2 { x: 64., y: 64. },
                 },
             },
+            FlowMap::default(),
         ));
+    }
+}
+
+pub fn shape_collides_statics(
+    collider_aabb: &Aabb2d,
+    collider_pos: &Vec2,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+) -> bool {
+    for (sc, st) in &statics {
+        let mut transformed_kc_shape = collider_aabb.clone();
+        transformed_kc_shape.min += collider_pos;
+        transformed_kc_shape.max += collider_pos;
+
+        let mut transformed_sc_shape = sc.shape.clone();
+        transformed_sc_shape.min += st.translation.truncate();
+        transformed_sc_shape.max += st.translation.truncate();
+
+        let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+        if colliding {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+pub fn player_calculate_flow(
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    player_flows: Query<(&Transform, &mut FlowMap), With<Player>>,
+) {
+    let h_shape: Aabb2d = Aabb2d {
+        min: Vec2 { x: 0., y: 0. },
+        max: Vec2 { x: 64., y: 64. },
+    };
+    for (p_transform, mut flow) in player_flows {
+        let player_2d_pos = p_transform.translation.truncate();
+        for x in -50..50 {
+            for y in -50..50 {
+                let h_col_pos = player_2d_pos + Vec2::new(x as f32 * 64.0, y as f32 * 64.0);
+                if shape_collides_statics(&h_shape, &h_col_pos, statics) {
+                    flow.map.insert(IVec2::new(x, y), 1000);
+                    return;
+                }
+                flow.map.insert(IVec2::new(x, y), x + y);
+            }
+        }
     }
 }
 
