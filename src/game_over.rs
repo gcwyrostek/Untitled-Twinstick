@@ -1,19 +1,27 @@
-use bevy::{prelude::*, window::PresentMode};
-use bevy::input::mouse::MouseButtonInput;
 use crate::GameState;
+use crate::collectible::Collectible;
+use crate::enemy::Enemy;
+use crate::player::Player;
+use crate::tiling::Tile;
+use crate::ui::HealthBar;
+use bevy::prelude::*;
 
 pub struct GameOverPlugin;
 impl Plugin for GameOverPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::GameOver), display_game_over);
+        app.add_systems(OnEnter(GameState::GameOver), display_game_over)
+            .add_systems(Update, wait_for_input.run_if(in_state(GameState::GameOver)));
     }
 }
 
-pub fn display_game_over(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>
-) {
+#[derive(Component)]
+pub struct GameOverScreen;
+
+pub fn display_game_over(mut commands: Commands, query: Query<Entity, With<Camera>>) {
+    if query.is_empty() {
+        commands.spawn(Camera2d);
+    }
+
     commands
         .spawn((
             Node {
@@ -25,7 +33,7 @@ pub fn display_game_over(
                 ..default()
             },
             BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
-            //MenuUI,
+            GameOverScreen,
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -37,4 +45,39 @@ pub fn display_game_over(
                 TextColor(Color::srgb(1.0, 0.0, 0.0)), //red
             ));
         });
+}
+
+fn wait_for_input(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<GameState>>,
+    input: Res<ButtonInput<KeyCode>>,
+    mouse_button_io: Res<ButtonInput<MouseButton>>,
+    query_player: Query<Entity, With<Player>>,
+    query_ui: Query<Entity, With<HealthBar>>,
+    query_tiles: Query<Entity, With<Tile>>,
+    query_collectible: Query<Entity, With<Collectible>>,
+    query_enemy: Query<Entity, With<Enemy>>,
+    query_gameover: Query<Entity, With<GameOverScreen>>,
+) {
+    if mouse_button_io.pressed(MouseButton::Left) {
+        for entity in query_player.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in query_ui.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in query_tiles.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in query_collectible.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in query_enemy.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in query_gameover.iter() {
+            commands.entity(entity).despawn();
+        }
+        next_state.set(GameState::Menu);
+    }
 }
