@@ -1,4 +1,4 @@
-use crate::{GameState, AssignedType, LogicType};
+use crate::{AssignedType, GameState, LogicType};
 use bevy::prelude::*;
 
 use bevy::input::ButtonInput;
