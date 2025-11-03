@@ -1,11 +1,11 @@
+use crate::pickup_system::PickupPlugin;
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{
     prelude::*,
     sprite::Material2dPlugin,
     window::PresentMode,
     winit::cursor::{CursorIcon, CustomCursor, CustomCursorImage},
 };
-use crate::pickup_system::PickupPlugin;
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
 // Game modules
 mod camera;
@@ -32,9 +32,9 @@ mod wall;
 mod collisions;
 mod game_over;
 mod lobby;
-mod slideshow;
-mod net_control;
 mod local_control;
+mod net_control;
+mod slideshow;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -51,7 +51,7 @@ enum GameState {
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum AssignedType{
+enum AssignedType {
     #[default]
     No,
     Host,
@@ -93,17 +93,16 @@ fn main() {
         }))
         // GameState init
         .init_state::<GameState>()
-
         //FPS Counter Plugin
         /*.add_plugins(FrameTimeDiagnosticsPlugin{
             max_history_length: 20,
             smoothing_factor: 0.1,
         })
         .add_plugins(LogDiagnosticsPlugin::default())*/
-
         //.insert_resource(Time::<Fixed>::from_hz(10.0))
-        .insert_resource(LogicType {l_type: AssignedType::No})
-
+        .insert_resource(LogicType {
+            l_type: AssignedType::No,
+        })
         // Core game systems
         //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)
         .add_systems(Startup, setup_cursor_icon)

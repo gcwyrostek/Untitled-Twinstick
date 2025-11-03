@@ -1,12 +1,14 @@
-use crate::{GameState, AssignedType, LogicType, player::Player, player::Velocity, net_control::NetControl, net_control::PlayerType,};
+use crate::{
+    AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType,
+    player::Player, player::Velocity,
+};
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
-use std::net::{UdpSocket, IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::thread;
 
 const IP_CONST: &str = "127.0.0.1:2525";
 const MAX_PLAYER: u8 = 4;
-
 
 #[derive(Resource)]
 pub struct SocketResource {
@@ -25,9 +27,8 @@ pub struct player_count {
 
 pub struct ServerPlugin;
 impl Plugin for ServerPlugin {
-    fn build(&self, app: &mut App,) {
-        app
-        .add_systems(
+    fn build(&self, app: &mut App) {
+        app.add_systems(
             OnEnter(GameState::Lobby),
             (server_init.before(server_start), server_start),
         )
@@ -36,15 +37,26 @@ impl Plugin for ServerPlugin {
             (send_players).run_if(type_equals_host),
         )
         .add_systems(Update, server_run.run_if(in_state(GameState::Lobby)))
-        .add_systems(Update, server_run.run_if(in_state(GameState::Playing)).run_if(type_equals_host))
-        .add_systems(FixedUpdate, send_player_update.run_if(in_state(GameState::Playing)).run_if(type_equals_host))
-        .add_systems(OnExit(GameState::Playing), server_close.run_if(type_equals_host));
+        .add_systems(
+            Update,
+            server_run
+                .run_if(in_state(GameState::Playing))
+                .run_if(type_equals_host),
+        )
+        .add_systems(
+            FixedUpdate,
+            send_player_update
+                .run_if(in_state(GameState::Playing))
+                .run_if(type_equals_host),
+        )
+        .add_systems(
+            OnExit(GameState::Playing),
+            server_close.run_if(type_equals_host),
+        );
     }
 }
 
-fn type_equals_host(
-    game_type: Res<LogicType>,
-) -> bool {
+fn type_equals_host(game_type: Res<LogicType>) -> bool {
     return game_type.l_type == AssignedType::Host;
 }
 
@@ -54,9 +66,11 @@ fn server_init(mut commands: Commands) {
     });
     commands.insert_resource(inFlag { ready: false });
     commands.insert_resource(player_count { count: 1 });
-    commands.spawn((
-        NetControl::new(PlayerType::Local, 0, SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2525)),
-    ));
+    commands.spawn((NetControl::new(
+        PlayerType::Local,
+        0,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2525),
+    ),));
 }
 
 fn server_close(mut commands: Commands) {
@@ -79,24 +93,21 @@ fn server_run(
     for i in 1..4 {
         match socket.socket.recv_from(&mut buf) {
             Ok((amt, src)) => {
-
                 //Server Receives Join Packet
                 if (buf[0] == 255) {
                     //info!("{:?} + {:?} + {:?}", src, amt, buf);
                     if count.count < MAX_PLAYER {
-                        let tempNet = commands.spawn((
-                            NetControl::new(PlayerType::Network, count.count, src)
-                        )).id();
+                        let tempNet = commands
+                            .spawn((NetControl::new(PlayerType::Network, count.count, src)))
+                            .id();
                         count.count += 1;
-                    }
-                    else
-                    {
+                    } else {
                         //Send Reject Message
                     }
                 }
 
                 //Input Byte
-                
+
                 for mut a in player.iter_mut() {
                     if a.get_addr() == src {
                         a.net_input = buf[0];
@@ -117,9 +128,9 @@ fn server_run(
                 }*/
 
                 /*socket
-                    .socket
-                    .send_to(&[1; 10], src)
-                    .expect("couldn't send data");*/
+                .socket
+                .send_to(&[1; 10], src)
+                .expect("couldn't send data");*/
             }
             Err(e) => {
                 //info!("Nothing");
@@ -137,9 +148,12 @@ fn send_players(
         if i.get_type() == PlayerType::Network {
             //info!{"{:?}", i.get_addr()};
             socket
-                    .socket
-                    .send_to(&[0, count.count, i.player_id, 0, 0, 0, 0, 0, 0, 0], i.get_addr())
-                    .expect("couldn't send data");
+                .socket
+                .send_to(
+                    &[0, count.count, i.player_id, 0, 0, 0, 0, 0, 0, 0],
+                    i.get_addr(),
+                )
+                .expect("couldn't send data");
         }
     }
 }
@@ -159,7 +173,6 @@ fn send_player_update(
                     .socket
                     .send_to(&out, i.get_addr())
                     .expect("couldn't send data");
-
             }
         }
     }
