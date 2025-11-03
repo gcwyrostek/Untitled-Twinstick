@@ -1,2 +1,5 @@
 ECHO is on.
 /target
+
+assets/.DS_Store
+src/.DS_Store
