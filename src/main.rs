@@ -50,6 +50,19 @@ enum GameState {
     GameOver,
 }
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum AssignedType{
+    #[default]
+    No,
+    Host,
+    Client,
+}
+
+#[derive(Resource)]
+pub struct LogicType {
+    pub l_type: AssignedType,
+}
+
 fn setup_cursor_icon(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -89,6 +102,8 @@ fn main() {
         .add_plugins(LogDiagnosticsPlugin::default())*/
 
         //.insert_resource(Time::<Fixed>::from_hz(10.0))
+        .insert_resource(LogicType {l_type: AssignedType::No})
+
         // Core game systems
         //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)
         .add_systems(Startup, setup_cursor_icon)

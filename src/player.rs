@@ -1,7 +1,9 @@
 use crate::light_manager::Lights;
 use crate::{
     GameState, components::Health, components::KinematicCollider, components::LightSource,
-    events::DamagePlayerEvent, player_material::PlayerBaseMaterial, net_control::NetControl, net_control::PlayerType,
+    events::DamagePlayerEvent, player_material::PlayerBaseMaterial, 
+    net_control::NetControl, net_control::PlayerType,
+    local_control::LocalControl, 
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
@@ -29,16 +31,6 @@ impl Plugin for PlayerPlugin {
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }
-/*
-pub struct PlayerPlugin;
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app
-        .add_systems(OnEnter(GameState::Playing), setup_player)
-        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)));
-    }
-}
-*/
 
 #[derive(Component)]
 pub struct Player;
@@ -75,7 +67,7 @@ pub fn setup_player(
     asset_server: Res<AssetServer>,
     // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
-    players: Query<Entity, With<NetControl>>,
+    players: Query<Entity, Or<(With<NetControl>, With<LocalControl>,)>>,
     lights: Res<Lights>,
 ) {
     // if query.is_empty() {
@@ -125,73 +117,142 @@ pub fn setup_player(
 pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    player: Query<(&mut Transform, &mut Velocity, &mut NetControl), With<Player>>,
+    player_net: Query<(&mut Transform, &mut Velocity, &mut NetControl), (With<Player>, With<NetControl>, Without<LocalControl>)>,
+    player_local: Query<(&mut Transform, &mut Velocity, &mut LocalControl), (With<Player>, With<LocalControl>, Without<NetControl>)>,
 ) {
-    //All Player check
-    for (mut transform, mut velocity, mut netcontrol) in player {
-        let mut dir = Vec2::ZERO;
+    //This is pretty ugly. If we could condense it, that would be great, but I couldn't figure it out at the time.
+    if player_net.iter().count() > player_local.iter().count() {
+        for (mut transform, mut velocity, mut control) in player_net {
+            let mut dir = Vec2::ZERO;
 
-        if netcontrol.get_type() == PlayerType::Local {
-            if input.pressed(KeyCode::KeyA) {
-                dir.x -= 1.;
+            if control.get_type() == PlayerType::Local {
+                if input.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
+
+                if input.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
+
+                if input.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
+
+                if input.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
+            } else {
+                if control.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
+
+                if control.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
+
+                if control.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
+
+                if control.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
             }
 
-            if input.pressed(KeyCode::KeyD) {
-                dir.x += 1.;
-            }
+            let deltat = time.delta_secs();
+            let accel = ACCEL_RATE * deltat;
 
-            if input.pressed(KeyCode::KeyW) {
-                dir.y += 1.;
-            }
+            **velocity = if dir.length() > 0. {
+                (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+            } else if velocity.length() > accel {
+                **velocity + (velocity.normalize_or_zero() * -accel)
+            } else {
+                Vec2::ZERO
+            };
 
-            if input.pressed(KeyCode::KeyS) {
-                dir.y -= 1.;
-            }
-        } else {
-            if netcontrol.pressed(KeyCode::KeyA) {
-                dir.x -= 1.;
-            }
+            let change = **velocity * deltat;
 
-            if netcontrol.pressed(KeyCode::KeyD) {
-                dir.x += 1.;
-            }
+            transform.translation += change.extend(0.);
 
-            if netcontrol.pressed(KeyCode::KeyW) {
-                dir.y += 1.;
-            }
+            //keep player in bounds
+            let max = Vec3::new(
+                WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
+                WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                0.,
+            );
 
-            if netcontrol.pressed(KeyCode::KeyS) {
-                dir.y -= 1.;
-            }
+            let min = max.clone() * -1.;
+
+            let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+            transform.translation = translate;
+
+            //Rounds position to integers
+            transform.translation.x = transform.translation.x.round();
+            transform.translation.y = transform.translation.y.round();
+            //info!("{:?}", transform.translation);
+
+            //Sets position in NetControl
+            control.set_pos_x(transform.translation.x);
+            control.set_pos_y(transform.translation.y);
         }
+    }
+    else {
+        for (mut transform, mut velocity, mut control) in player_local {
+            let mut dir = Vec2::ZERO;
 
-        let deltat = time.delta_secs();
-        let accel = ACCEL_RATE * deltat;
+            if control.get_type() == PlayerType::Local {
+                if input.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
 
-        **velocity = if dir.length() > 0. {
-            (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
-        } else if velocity.length() > accel {
-            **velocity + (velocity.normalize_or_zero() * -accel)
-        } else {
-            Vec2::ZERO
-        };
+                if input.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
 
-        let change = **velocity * deltat;
+                if input.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
 
-        transform.translation += change.extend(0.);
+                if input.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
 
-        //keep player in bounds
-        let max = Vec3::new(
-            WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
-            WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
-            0.,
-        );
+                let deltat = time.delta_secs();
+                let accel = ACCEL_RATE * deltat;
 
-        let min = max.clone() * -1.;
+                **velocity = if dir.length() > 0. {
+                    (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+                } else if velocity.length() > accel {
+                    **velocity + (velocity.normalize_or_zero() * -accel)
+                } else {
+                    Vec2::ZERO
+                };
 
-        transform.translation = (transform.translation + change.extend(0.)).clamp(min, max);
+                let change = **velocity * deltat;
 
-        //transform.translation += change.extend(0.);
+                transform.translation += change.extend(0.);
+
+                //keep player in bounds
+                let max = Vec3::new(
+                    WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
+                    WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                    0.,
+                );
+
+                let min = max.clone() * -1.;
+
+                let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+                transform.translation = translate;
+
+                //Rounds position to integers
+                transform.translation.x = transform.translation.x.round();
+                transform.translation.y = transform.translation.y.round();
+                //info!("{:?}", transform.translation);
+            } else {
+                transform.translation = control.get_p_pos();
+            }
+            
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{GameState, player::Player, net_control::NetControl, net_control::PlayerType, local_control::LocalControl};
+use crate::{GameState, AssignedType, LogicType, player::Player, net_control::NetControl, net_control::PlayerType, local_control::LocalControl};
 use bevy::prelude::*;
 use std::net::UdpSocket;
 
@@ -22,14 +22,24 @@ impl Plugin for ClientPlugin {
         )
         .add_systems(
             FixedUpdate,
-            input_converter.run_if(in_state(GameState::Joining)),
+            client_run.run_if(in_state(GameState::Joining)).run_if(type_equals_client),
         )
         .add_systems(
             FixedUpdate,
-            client_run.run_if(in_state(GameState::Joining)),
+            client_run.run_if(in_state(GameState::Playing)).run_if(type_equals_client),
         )
-        .add_systems(OnExit(GameState::Playing), client_close);
+        .add_systems(
+            FixedUpdate,
+            input_converter.run_if(in_state(GameState::Playing)).run_if(type_equals_client),
+        )
+        .add_systems(OnExit(GameState::Playing), client_close.run_if(type_equals_client));
     }
+}
+
+fn type_equals_client(
+    game_type: Res<LogicType>,
+) -> bool {
+    return game_type.l_type == AssignedType::Client;
 }
 
 fn client_init(mut commands: Commands) {
@@ -71,20 +81,22 @@ fn client_connect(socket: ResMut<SocketResource>) {
 fn client_run(
     mut commands: Commands,
     socket: ResMut<'_, SocketResource>,
+    mut p_loc: Query<&mut LocalControl, With<LocalControl>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let mut buf = [0, 0, 0];
+    let mut buf = [0; 10];
     /*socket
         .socket
         .send_to(&[9; 10], "127.0.0.1:2525")
         .expect("couldn't send data");*/
-
+    for i in 1..4 {
     match socket.socket.recv_from(&mut buf)
     {
         Ok((amt, src)) => {
             //info!("{:?} + {:?} + {:?}", amt, src, buf);
             match buf[0] {
 
-                //Code 0 -> Game Started. Send player counts for LocalControl initialization
+                //Code 0 -> Game Started. Send player counts for LocalControl initialization.
                 0 => {
                     for i in 0..buf[1] {
                         if i == buf[2] {
@@ -101,13 +113,27 @@ fn client_run(
                             info!("Created net player: {}", i);
                         }
                     }
+                    //Start the game
+                    info!("PLAY STATE");
+                    next_state.set(GameState::Playing);
                 }
-                _ => {info!("Wrong");}
+
+                //Code 1 -> Player position update.
+                1 => { 
+                    for mut i in p_loc.iter_mut() {
+                        if i.player_id == buf[1]
+                        {
+                            i.set_p_pos(buf);
+                        }
+                    } 
+                }
+                _ => {info!("{:?} + {:?} + {:?}", amt, src, buf);}
             }
         }
         Err(e) => {
             //info!("ERROR");
         }
+    }
     }
 }
 
@@ -147,7 +173,7 @@ pub fn input_converter(
         .send_to(&[input_result, angle_result], "127.0.0.1:2525")
         .expect("couldn't send data");
     //info!("WASD");
-    //info!("{:08b}", out);
+    //info!("{:08b}", input_result);
 
     /*for i in input.get_pressed() {
         info!("(KEYBOARD) {:?} is pressed.", i);

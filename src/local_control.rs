@@ -7,8 +7,7 @@ use std::net::{UdpSocket, IpAddr, Ipv4Addr, SocketAddr};
 #[derive(Component)]
 pub struct LocalControl {
     pub player_type: PlayerType,
-    pub p_pos: Vec2,
-    pub p_mov: Vec2,
+    pub p_pos: Vec3,
     pub p_angle: u8,
     pub player_id: u8,
     //player_addr: SocketAddr,
@@ -17,8 +16,7 @@ impl LocalControl {
     pub fn new(ptype: PlayerType, pid: u8) -> Self {
         Self {
             player_type: ptype,
-            p_pos: Vec2::ZERO,
-            p_mov: Vec2::ZERO,
+            p_pos: Vec3::ZERO,
             p_angle: 0,
             player_id: pid,
         }
@@ -34,6 +32,21 @@ impl LocalControl {
         //This assumes that you've already rounded the float to 1 decimal point
         let angle_as_i8 = (self.p_angle as i8);
         return angle_as_i8 as f32;
+    }
+
+    pub fn set_p_pos(&mut self, pack: [u8; 10]) {
+        let mut unpack_x: [u8; 4] = [0; 4];
+        let mut unpack_y: [u8; 4] = [0; 4];
+        unpack_x.copy_from_slice(&pack[2..6]);
+        unpack_y.copy_from_slice(&pack[6..10]);
+        let x = i32::from_ne_bytes(unpack_x);
+        let y = i32::from_ne_bytes(unpack_y);
+        self.p_pos = Vec3::new(x as f32, y as f32, 0.);
+        //info!("Player {}'s Position: {:?}", self.player_id, self.p_pos);
+    }
+
+    pub fn get_p_pos(&self) -> Vec3{
+        return self.p_pos;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////

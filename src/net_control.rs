@@ -11,6 +11,8 @@ pub struct NetControl {
     pub net_angle: u8,
     pub player_id: u8,
     player_addr: SocketAddr,
+    player_pos_x: i32,
+    player_pos_y: i32,
 }
 impl NetControl {
     pub fn new(ptype: PlayerType, pid: u8, addr: SocketAddr) -> Self {
@@ -20,6 +22,8 @@ impl NetControl {
             net_angle: 0,
             player_id: pid,
             player_addr: addr,
+            player_pos_x: 0,
+            player_pos_y: 0,
         }
     }
 
@@ -58,7 +62,8 @@ impl NetControl {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///                                            Angle functions                                           ///
     ///                                                                                                      ///
@@ -76,6 +81,54 @@ impl NetControl {
         //This assumes that you've already rounded the float to 1 decimal point
         let angle_as_i8 = (self.net_angle as i8);
         return angle_as_i8 as f32;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///                                         Position functions                                           ///
+    ///                                                                                                      ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //Setter for pos_x
+    pub fn set_pos_x(&mut self, x_pos: f32) {
+        self.player_pos_x = x_pos as i32;
+    }
+
+    //Setter for pos_y
+    pub fn set_pos_y(&mut self, y_pos: f32) {
+        self.player_pos_y = y_pos as i32;
+    }
+
+    //MAY RUN INTO ENDIAN ISSUES BETWEEN DIFFERENT COMPUTERS
+    //Getter for pos_x
+    pub fn get_pos_x(&self) -> [u8; 4] {    
+        return self.player_pos_x.to_ne_bytes();
+    }
+
+    //Getter for pos_y
+    pub fn get_pos_y(&self) -> [u8; 4] {    
+        return self.player_pos_y.to_ne_bytes();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///                                            Outgoing Packet                                           ///
+    ///                                                                                                      ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    pub fn get_out_packet(&self, op: u8, pid: u8) -> [u8; 10] {
+        let mut out_pack: [u8; 10] = [0; 10]; 
+        let out_x = self.get_pos_x();
+        let out_y = self.get_pos_y();
+        out_pack[0] = op;
+        out_pack[1] = pid;
+        out_pack[2..6].copy_from_slice(&out_x);
+        out_pack[6..10].copy_from_slice(&out_y);
+        return out_pack;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
