@@ -103,8 +103,7 @@ pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>
     for i in 0..2 {
         commands.spawn((
             Sprite::from_image(asset_server.load("textures/flashlight.png")),
-            Transform::from_xyz(50.0 + (i as f32 * 180.0), 200.0, 5.0)
-                .with_scale(Vec3::splat(1.2)), // 1.2x larger than original size
+            Transform::from_xyz(50.0 + (i as f32 * 180.0), 200.0, 5.0).with_scale(Vec3::splat(1.2)), // 1.2x larger than original size
             Collectible {
                 collectible_type: CollectibleType::Flashlight, // Flashlight pickup (boolean to check if picked up or not)
                 amount: 1,                                     // Single flashlight

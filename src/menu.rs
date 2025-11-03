@@ -36,12 +36,9 @@ impl Plugin for MenuPlugin {
     }
 }
 
-fn on_enter_menu(
-    mut commands: Commands,
-    query: Query<Entity, With<Camera>>,
-) {
+fn on_enter_menu(mut commands: Commands, query: Query<Entity, With<Camera>>) {
     info!("STATE: MENU (blank). Click or press Enter/Space to START.");
-    
+
     if query.is_empty() {
         commands.spawn((Camera2d, MenuUI));
     }
