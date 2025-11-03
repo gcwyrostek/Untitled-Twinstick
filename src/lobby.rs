@@ -6,8 +6,6 @@ pub struct LobbyPlugin;
 impl Plugin for LobbyPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Lobby), display_lobby)
-            // Clean up lobby camera when exiting to prevent double cameras from breaking rotation/shooting in Playing state
-            .add_systems(OnExit(GameState::Lobby), cleanup_lobby)
             .add_systems(Update, wait_for_input.run_if(in_state(GameState::Lobby)));
     }
 }
@@ -15,25 +13,7 @@ impl Plugin for LobbyPlugin {
 #[derive(Component)]
 pub struct LobbyScreen;
 
-// Tag component to identify the lobby camera so it can be cleaned up when leaving lobby state
-#[derive(Component)]
-pub struct LobbyCamera;
-
-fn cleanup_lobby(mut commands: Commands, query: Query<Entity, (With<Camera>, With<LobbyCamera>)>) {
-    for entity in &query {
-        commands.entity(entity).despawn();
-    }
-}
-
-pub fn display_lobby(
-    mut commands: Commands,
-    query: Query<Entity, (With<Camera>, With<LobbyCamera>)>,
-) {
-    // Spawn lobby camera if none exists - needed to display lobby UI and avoid grey screen
-    if query.is_empty() {
-        commands.spawn((Camera2d, LobbyCamera));
-    }
-
+pub fn display_lobby(mut commands: Commands) {
     commands
         .spawn((
             Node {
