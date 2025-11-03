@@ -1,4 +1,5 @@
 use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::ShaderType};
+use std::collections::HashMap;
 
 #[derive(Component)]
 pub struct Health {
@@ -23,6 +24,12 @@ impl Health {
     pub fn is_dead(&self) -> bool {
         self.current <= 0
     }
+}
+
+// Pathfinding
+#[derive(Component, Default, Debug, Clone)]
+pub struct FlowMap {
+    pub map: HashMap<IVec2, i32>,
 }
 
 // Collectibles
