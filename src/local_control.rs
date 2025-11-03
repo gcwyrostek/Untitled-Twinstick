@@ -1,7 +1,7 @@
-use crate::{GameState, player::Player, net_control::PlayerType};
+use crate::{GameState, net_control::PlayerType, player::Player};
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
-use std::net::{UdpSocket, IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 
 //LocalControl gives the application access to the information sent by the clients
 #[derive(Component)]
@@ -28,7 +28,7 @@ impl LocalControl {
     }
 
     //Getter for p_angle
-    pub fn get_angle(&self) -> f32{
+    pub fn get_angle(&self) -> f32 {
         //This assumes that you've already rounded the float to 1 decimal point
         let angle_as_i8 = (self.p_angle as i8);
         return angle_as_i8 as f32;
@@ -45,7 +45,7 @@ impl LocalControl {
         //info!("Player {}'s Position: {:?}", self.player_id, self.p_pos);
     }
 
-    pub fn get_p_pos(&self) -> Vec3{
+    pub fn get_p_pos(&self) -> Vec3 {
         return self.p_pos;
     }
 
@@ -55,14 +55,11 @@ impl LocalControl {
 pub struct LocalControlPlugin;
 impl Plugin for LocalControlPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(OnEnter(GameState::Lobby), local_control_init);
+        app.add_systems(OnEnter(GameState::Lobby), local_control_init);
     }
 }
 
-fn local_control_init(
-    mut commands: Commands,
-) {
+fn local_control_init(mut commands: Commands) {
     /*commands.spawn((
         NetControl::new(PlayerType::Local, 0, SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2525)),
     ));*/

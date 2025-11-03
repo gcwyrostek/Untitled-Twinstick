@@ -1,9 +1,8 @@
 use crate::light_manager::Lights;
 use crate::{
     GameState, components::Health, components::KinematicCollider, components::LightSource,
-    events::DamagePlayerEvent, player_material::PlayerBaseMaterial, 
-    net_control::NetControl, net_control::PlayerType,
-    local_control::LocalControl, 
+    events::DamagePlayerEvent, local_control::LocalControl, net_control::NetControl,
+    net_control::PlayerType, player_material::PlayerBaseMaterial,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
@@ -67,7 +66,7 @@ pub fn setup_player(
     asset_server: Res<AssetServer>,
     // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
-    players: Query<Entity, Or<(With<NetControl>, With<LocalControl>,)>>,
+    players: Query<Entity, Or<(With<NetControl>, With<LocalControl>)>>,
     lights: Res<Lights>,
 ) {
     // if query.is_empty() {
@@ -117,8 +116,14 @@ pub fn setup_player(
 pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    player_net: Query<(&mut Transform, &mut Velocity, &mut NetControl), (With<Player>, With<NetControl>, Without<LocalControl>)>,
-    player_local: Query<(&mut Transform, &mut Velocity, &mut LocalControl), (With<Player>, With<LocalControl>, Without<NetControl>)>,
+    player_net: Query<
+        (&mut Transform, &mut Velocity, &mut NetControl),
+        (With<Player>, With<NetControl>, Without<LocalControl>),
+    >,
+    player_local: Query<
+        (&mut Transform, &mut Velocity, &mut LocalControl),
+        (With<Player>, With<LocalControl>, Without<NetControl>),
+    >,
 ) {
     //This is pretty ugly. If we could condense it, that would be great, but I couldn't figure it out at the time.
     if player_net.iter().count() > player_local.iter().count() {
@@ -195,8 +200,7 @@ pub fn player_movement(
             control.set_pos_x(transform.translation.x);
             control.set_pos_y(transform.translation.y);
         }
-    }
-    else {
+    } else {
         for (mut transform, mut velocity, mut control) in player_local {
             let mut dir = Vec2::ZERO;
 
@@ -251,13 +255,19 @@ pub fn player_movement(
             } else {
                 transform.translation = control.get_p_pos();
             }
-            
         }
     }
 }
 
 pub fn player_orientation(
-    mut players: Query<(&mut MeshMaterial2d<PlayerBaseMaterial>, &mut Transform, &mut NetControl), With<Player>>,
+    mut players: Query<
+        (
+            &mut MeshMaterial2d<PlayerBaseMaterial>,
+            &mut Transform,
+            &mut NetControl,
+        ),
+        With<Player>,
+    >,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
     asset_server: Res<AssetServer>,
@@ -275,7 +285,6 @@ pub fn player_orientation(
             camera.viewport_to_world_2d(camera_transform, cursor_position)
         {
             for (mut material, mut player_transform, mut netcontrol) in players.iter_mut() {
-
                 let mut rounded_rot_z = 0.;
 
                 if netcontrol.player_type == PlayerType::Local {
@@ -284,16 +293,15 @@ pub fn player_orientation(
 
                     if direction.length() > 0.0 {
                         let rotation_z = direction.y.atan2(direction.x);
-                        //Rounding is needed to prevent precision errors when networking 
-                        rounded_rot_z = (rotation_z * 10.).round()/10.;
+                        //Rounding is needed to prevent precision errors when networking
+                        rounded_rot_z = (rotation_z * 10.).round() / 10.;
                         netcontrol.set_angle(rounded_rot_z);
                     }
-                } 
-                else if netcontrol.player_type == PlayerType::Network{
+                } else if netcontrol.player_type == PlayerType::Network {
                     rounded_rot_z = netcontrol.get_angle();
-                } 
+                }
 
-                player_transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.); 
+                player_transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
             }
         }
     }

@@ -1,4 +1,7 @@
-use crate::{GameState, AssignedType, LogicType, player::Player, net_control::NetControl, net_control::PlayerType, local_control::LocalControl};
+use crate::{
+    AssignedType, GameState, LogicType, local_control::LocalControl, net_control::NetControl,
+    net_control::PlayerType, player::Player,
+};
 use bevy::prelude::*;
 use std::net::UdpSocket;
 
@@ -22,23 +25,30 @@ impl Plugin for ClientPlugin {
         )
         .add_systems(
             FixedUpdate,
-            client_run.run_if(in_state(GameState::Joining)).run_if(type_equals_client),
+            client_run
+                .run_if(in_state(GameState::Joining))
+                .run_if(type_equals_client),
         )
         .add_systems(
             FixedUpdate,
-            client_run.run_if(in_state(GameState::Playing)).run_if(type_equals_client),
+            client_run
+                .run_if(in_state(GameState::Playing))
+                .run_if(type_equals_client),
         )
         .add_systems(
             FixedUpdate,
-            input_converter.run_if(in_state(GameState::Playing)).run_if(type_equals_client),
+            input_converter
+                .run_if(in_state(GameState::Playing))
+                .run_if(type_equals_client),
         )
-        .add_systems(OnExit(GameState::Playing), client_close.run_if(type_equals_client));
+        .add_systems(
+            OnExit(GameState::Playing),
+            client_close.run_if(type_equals_client),
+        );
     }
 }
 
-fn type_equals_client(
-    game_type: Res<LogicType>,
-) -> bool {
+fn type_equals_client(game_type: Res<LogicType>) -> bool {
     return game_type.l_type == AssignedType::Client;
 }
 
@@ -86,54 +96,47 @@ fn client_run(
 ) {
     let mut buf = [0; 10];
     /*socket
-        .socket
-        .send_to(&[9; 10], "127.0.0.1:2525")
-        .expect("couldn't send data");*/
+    .socket
+    .send_to(&[9; 10], "127.0.0.1:2525")
+    .expect("couldn't send data");*/
     for i in 1..4 {
-    match socket.socket.recv_from(&mut buf)
-    {
-        Ok((amt, src)) => {
-            //info!("{:?} + {:?} + {:?}", amt, src, buf);
-            match buf[0] {
-
-                //Code 0 -> Game Started. Send player counts for LocalControl initialization.
-                0 => {
-                    for i in 0..buf[1] {
-                        if i == buf[2] {
-                            commands.spawn(
-                                LocalControl::new(PlayerType::Local, i)
-                            );
-                            info!("I am player: {}", i);
+        match socket.socket.recv_from(&mut buf) {
+            Ok((amt, src)) => {
+                //info!("{:?} + {:?} + {:?}", amt, src, buf);
+                match buf[0] {
+                    //Code 0 -> Game Started. Send player counts for LocalControl initialization.
+                    0 => {
+                        for i in 0..buf[1] {
+                            if i == buf[2] {
+                                commands.spawn(LocalControl::new(PlayerType::Local, i));
+                                info!("I am player: {}", i);
+                            } else {
+                                commands.spawn(LocalControl::new(PlayerType::Network, i));
+                                info!("Created net player: {}", i);
+                            }
                         }
-                        else
-                        {
-                            commands.spawn(
-                                LocalControl::new(PlayerType::Network, i)
-                            );
-                            info!("Created net player: {}", i);
+                        //Start the game
+                        info!("PLAY STATE");
+                        next_state.set(GameState::Playing);
+                    }
+
+                    //Code 1 -> Player position update.
+                    1 => {
+                        for mut i in p_loc.iter_mut() {
+                            if i.player_id == buf[1] {
+                                i.set_p_pos(buf);
+                            }
                         }
                     }
-                    //Start the game
-                    info!("PLAY STATE");
-                    next_state.set(GameState::Playing);
+                    _ => {
+                        info!("{:?} + {:?} + {:?}", amt, src, buf);
+                    }
                 }
-
-                //Code 1 -> Player position update.
-                1 => { 
-                    for mut i in p_loc.iter_mut() {
-                        if i.player_id == buf[1]
-                        {
-                            i.set_p_pos(buf);
-                        }
-                    } 
-                }
-                _ => {info!("{:?} + {:?} + {:?}", amt, src, buf);}
+            }
+            Err(e) => {
+                //info!("ERROR");
             }
         }
-        Err(e) => {
-            //info!("ERROR");
-        }
-    }
     }
 }
 
