@@ -1,7 +1,9 @@
 use crate::light_manager::Lights;
 use crate::{
     GameState, components::Health, components::KinematicCollider, components::LightSource,
-    events::DamagePlayerEvent, player_material::PlayerBaseMaterial,
+    events::DamagePlayerEvent, player_material::PlayerBaseMaterial, 
+    net_control::NetControl, net_control::PlayerType,
+    local_control::LocalControl, 
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::prelude::*;
@@ -29,16 +31,6 @@ impl Plugin for PlayerPlugin {
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
     }
 }
-/*
-pub struct PlayerPlugin;
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app
-        .add_systems(OnEnter(GameState::Playing), setup_player)
-        .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)));
-    }
-}
-*/
 
 #[derive(Component)]
 pub struct Player;
@@ -68,28 +60,6 @@ impl Velocity {
     }
 }
 
-#[derive(Component)]
-pub struct NetControl {
-    player_type: PlayerControl,
-    pub net_input: u8,
-    pub player_id: u8,
-}
-impl NetControl {
-    fn new(ptype: PlayerControl, pid: u8) -> Self {
-        Self {
-            player_type: ptype,
-            net_input: 0,
-            player_id: pid,
-        }
-    }
-}
-
-#[derive(PartialEq)]
-enum PlayerControl {
-    Local,
-    Network,
-}
-
 pub fn setup_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -97,164 +67,197 @@ pub fn setup_player(
     asset_server: Res<AssetServer>,
     // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
+    players: Query<Entity, Or<(With<NetControl>, With<LocalControl>,)>>,
     lights: Res<Lights>,
 ) {
     // if query.is_empty() {
     //     commands.spawn(Camera2d);
     // }
 
-    commands.spawn((
-        // For any entities that we want to have lighting,
-        // add the following two components.
-        Mesh2d(meshes.add(Rectangle::default())),
-        MeshMaterial2d(materials.add(PlayerBaseMaterial {
-            // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
-            color: LinearRgba::BLUE,
-            texture: Some(asset_server.load("player/player_albedo.png")),
-            lighting: crate::player_material::Lighting {
-                // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing.
-                // Should be 0 for everything except the player.
-                // 'diffuse_reflection_coefficient' is how much not-shiny light is reflected back.
-                // 'shininess' is what it sounds like. Higher number = shinier.
-                ambient_reflection_coefficient: 0.1,
-                ambient_light_intensity: 0.1,
-                diffuse_reflection_coefficient: 1.0,
-                shininess: 40.0,
+    for i in players {
+        commands.entity(i).insert((
+            // For any entities that we want to have lighting,
+            // add the following two components.
+            Mesh2d(meshes.add(Rectangle::default())),
+            MeshMaterial2d(materials.add(PlayerBaseMaterial {
+                // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
+                color: LinearRgba::BLUE,
+                texture: Some(asset_server.load("player/player_albedo.png")),
+                lighting: crate::player_material::Lighting {
+                    // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing.
+                    // Should be 0 for everything except the player.
+                    // 'diffuse_reflection_coefficient' is how much not-shiny light is reflected back.
+                    // 'shininess' is what it sounds like. Higher number = shinier.
+                    ambient_reflection_coefficient: 0.1,
+                    ambient_light_intensity: 0.1,
+                    diffuse_reflection_coefficient: 1.0,
+                    shininess: 40.0,
+                },
+                lights: lights.lights,
+                normal: Some(asset_server.load("player/player_normal.png")),
+                mesh_rotation: 0.0,
+            })),
+            Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
+            // you can have a smaller player with 32 and larger player with 128
+            Velocity::new(),
+            FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
+            Player,
+            Health::new(MAX_HEALTH),
+            //NetControl::new(PlayerType::Local, 0),
+            KinematicCollider {
+                shape: Aabb2d {
+                    min: Vec2 { x: 0., y: 0. },
+                    max: Vec2 { x: 64., y: 64. },
+                },
             },
-            lights: lights.lights,
-            normal: Some(asset_server.load("player/player_normal.png")),
-            mesh_rotation: 0.0,
-        })),
-        Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
-        // you can have a smaller player with 32 and larger player with 128
-        Velocity::new(),
-        FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
-        Player,
-        Health::new(MAX_HEALTH),
-        NetControl::new(PlayerControl::Local, 0),
-        KinematicCollider {
-            shape: Aabb2d {
-                min: Vec2 { x: 0., y: 0. },
-                max: Vec2 { x: 64., y: 64. },
-            },
-        },
-    ));
-
-    /*commands.spawn((
-        // For any entities that we want to have lighting,
-        // add the following two components.
-        Mesh2d(meshes.add(Rectangle::default())),
-        MeshMaterial2d(materials.add(PlayerBaseMaterial {
-            // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
-            color: LinearRgba::BLUE,
-            texture: Some(asset_server.load("player/player_albedo.png")),
-            lighting: crate::player_material::Lighting {
-                // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing.
-                // Should be 0 for everything except the player.
-                // 'diffuse_reflection_coefficient' is how much not-shiny light is reflected back.
-                // 'shininess' is what it sounds like. Higher number = shinier.
-                ambient_reflection_coefficient: 0.1,
-                ambient_light_intensity: 0.1,
-                diffuse_reflection_coefficient: 1.0,
-                shininess: 40.0,
-            },
-            lights: lights.lights,
-            normal: Some(asset_server.load("player/player_normal.png")),
-            mesh_rotation: 0.0,
-        })),
-        Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
-        // you can have a smaller player with 32 and larger player with 128
-        Velocity::new(),
-        FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
-        Player,
-        Health::new(MAX_HEALTH),
-        NetControl::new(PlayerControl::Network, 1),
-        KinematicCollider {
-            shape: Aabb2d {
-                min: Vec2 { x: 0., y: 0. },
-                max: Vec2 { x: 64., y: 64. },
-            },
-        },
-    ));*/
+        ));
+    }
 }
 
 pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    player: Query<(&mut Transform, &mut Velocity, &mut NetControl), With<Player>>,
+    player_net: Query<(&mut Transform, &mut Velocity, &mut NetControl), (With<Player>, With<NetControl>, Without<LocalControl>)>,
+    player_local: Query<(&mut Transform, &mut Velocity, &mut LocalControl), (With<Player>, With<LocalControl>, Without<NetControl>)>,
 ) {
-    //Basic Player
-    for (mut transform, mut velocity, mut netcontrol) in player {
-        let mut dir = Vec2::ZERO;
+    //This is pretty ugly. If we could condense it, that would be great, but I couldn't figure it out at the time.
+    if player_net.iter().count() > player_local.iter().count() {
+        for (mut transform, mut velocity, mut control) in player_net {
+            let mut dir = Vec2::ZERO;
 
-        if netcontrol.player_type == PlayerControl::Local {
-            if input.pressed(KeyCode::KeyA) {
-                dir.x -= 1.;
+            if control.get_type() == PlayerType::Local {
+                if input.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
+
+                if input.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
+
+                if input.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
+
+                if input.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
+            } else {
+                if control.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
+
+                if control.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
+
+                if control.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
+
+                if control.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
             }
 
-            if input.pressed(KeyCode::KeyD) {
-                dir.x += 1.;
-            }
+            let deltat = time.delta_secs();
+            let accel = ACCEL_RATE * deltat;
 
-            if input.pressed(KeyCode::KeyW) {
-                dir.y += 1.;
-            }
+            **velocity = if dir.length() > 0. {
+                (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+            } else if velocity.length() > accel {
+                **velocity + (velocity.normalize_or_zero() * -accel)
+            } else {
+                Vec2::ZERO
+            };
 
-            if input.pressed(KeyCode::KeyS) {
-                dir.y -= 1.;
-            }
-        } else {
-            let input_str = format!("{:08b}", netcontrol.net_input);
-            //info!(input_str);
-            if input_str.chars().nth(1).unwrap() == '1' {
-                dir.x -= 1.;
-            }
+            let change = **velocity * deltat;
 
-            if input_str.chars().nth(3).unwrap() == '1' {
-                dir.x += 1.;
-            }
+            transform.translation += change.extend(0.);
 
-            if input_str.chars().nth(0).unwrap() == '1' {
-                dir.y += 1.;
-            }
+            //keep player in bounds
+            let max = Vec3::new(
+                WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
+                WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                0.,
+            );
 
-            if input_str.chars().nth(2).unwrap() == '1' {
-                dir.y -= 1.;
-            }
+            let min = max.clone() * -1.;
+
+            let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+            transform.translation = translate;
+
+            //Rounds position to integers
+            transform.translation.x = transform.translation.x.round();
+            transform.translation.y = transform.translation.y.round();
+            //info!("{:?}", transform.translation);
+
+            //Sets position in NetControl
+            control.set_pos_x(transform.translation.x);
+            control.set_pos_y(transform.translation.y);
         }
+    }
+    else {
+        for (mut transform, mut velocity, mut control) in player_local {
+            let mut dir = Vec2::ZERO;
 
-        let deltat = time.delta_secs();
-        let accel = ACCEL_RATE * deltat;
+            if control.get_type() == PlayerType::Local {
+                if input.pressed(KeyCode::KeyA) {
+                    dir.x -= 1.;
+                }
 
-        **velocity = if dir.length() > 0. {
-            (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
-        } else if velocity.length() > accel {
-            **velocity + (velocity.normalize_or_zero() * -accel)
-        } else {
-            Vec2::ZERO
-        };
+                if input.pressed(KeyCode::KeyD) {
+                    dir.x += 1.;
+                }
 
-        let change = **velocity * deltat;
+                if input.pressed(KeyCode::KeyW) {
+                    dir.y += 1.;
+                }
 
-        transform.translation += change.extend(0.);
+                if input.pressed(KeyCode::KeyS) {
+                    dir.y -= 1.;
+                }
 
-        //keep player in bounds
-        let max = Vec3::new(
-            WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
-            WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
-            0.,
-        );
+                let deltat = time.delta_secs();
+                let accel = ACCEL_RATE * deltat;
 
-        let min = max.clone() * -1.;
+                **velocity = if dir.length() > 0. {
+                    (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+                } else if velocity.length() > accel {
+                    **velocity + (velocity.normalize_or_zero() * -accel)
+                } else {
+                    Vec2::ZERO
+                };
 
-        transform.translation = (transform.translation + change.extend(0.)).clamp(min, max);
+                let change = **velocity * deltat;
 
-        //transform.translation += change.extend(0.);
+                transform.translation += change.extend(0.);
+
+                //keep player in bounds
+                let max = Vec3::new(
+                    WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
+                    WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                    0.,
+                );
+
+                let min = max.clone() * -1.;
+
+                let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+                transform.translation = translate;
+
+                //Rounds position to integers
+                transform.translation.x = transform.translation.x.round();
+                transform.translation.y = transform.translation.y.round();
+                //info!("{:?}", transform.translation);
+            } else {
+                transform.translation = control.get_p_pos();
+            }
+            
+        }
     }
 }
 
 pub fn player_orientation(
-    mut players: Query<(&mut MeshMaterial2d<PlayerBaseMaterial>, &mut Transform), With<Player>>,
+    mut players: Query<(&mut MeshMaterial2d<PlayerBaseMaterial>, &mut Transform, &mut NetControl), With<Player>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
     asset_server: Res<AssetServer>,
@@ -271,50 +274,26 @@ pub fn player_orientation(
         if let Ok(cursor_world_position) =
             camera.viewport_to_world_2d(camera_transform, cursor_position)
         {
-            for (mut material, mut player_transform) in players.iter_mut() {
-                let player_position = player_transform.translation.truncate();
-                let direction = cursor_world_position - player_position;
+            for (mut material, mut player_transform, mut netcontrol) in players.iter_mut() {
 
-                if direction.length() > 0.0 {
-                    let angle = direction.y.atan2(direction.x);
-                    // let degrees = angle.to_degrees();
+                let mut rounded_rot_z = 0.;
 
-                    // // Convert to 0-360 range and rotate so 0° is bottom
-                    // let normalized_degrees = ((if degrees < 0.0 {
-                    //     degrees + 360.0
-                    // } else {
-                    //     degrees
-                    // }) + 90.0)
-                    //     % 360.0;
+                if netcontrol.player_type == PlayerType::Local {
+                    let player_position = player_transform.translation.truncate();
+                    let direction = cursor_world_position - player_position;
 
-                    let rotation_z = direction.y.atan2(direction.x);
-                    player_transform.rotation = Quat::from_rotation_z(rotation_z - consts::PI / 2.);
+                    if direction.length() > 0.0 {
+                        let rotation_z = direction.y.atan2(direction.x);
+                        //Rounding is needed to prevent precision errors when networking 
+                        rounded_rot_z = (rotation_z * 10.).round()/10.;
+                        netcontrol.set_angle(rounded_rot_z);
+                    }
+                } 
+                else if netcontrol.player_type == PlayerType::Network{
+                    rounded_rot_z = netcontrol.get_angle();
+                } 
 
-                    //     // Map angle ranges to sprite images
-                    //     // Bottom=0°, Right=90°, Top=180°, Left=270°
-                    //     let sprite_path = if normalized_degrees >= 337.5 || normalized_degrees < 22.5 {
-                    //         "player/blueberryman.png" // 0° (bottom)
-                    //     } else if normalized_degrees >= 22.5 && normalized_degrees < 67.5 {
-                    //         "player/blueberryman45.png" // 45° (bottom right)
-                    //     } else if normalized_degrees >= 67.5 && normalized_degrees < 112.5 {
-                    //         "player/blueberryman90.png" // 90° (right)
-                    //     } else if normalized_degrees >= 112.5 && normalized_degrees < 157.5 {
-                    //         "player/blueberryman135.png" // 135° (top right)
-                    //     } else if normalized_degrees >= 157.5 && normalized_degrees < 202.5 {
-                    //         "player/blueberryman180.png" // 180° (top)
-                    //     } else if normalized_degrees >= 202.5 && normalized_degrees < 247.5 {
-                    //         "player/blueberryman-135.png" // 225° (top left)
-                    //     } else if normalized_degrees >= 247.5 && normalized_degrees < 292.5 {
-                    //         "player/blueberryman-90.png" // 270° (left)
-                    //     } else {
-                    //         "player/blueberryman-45.png" // 315° (bottom left)
-                    //     };
-
-                    //     // Get the material handle and update its texture
-                    //     if let Some(material_handle) = materials.get_mut(&material.0) {
-                    //         material_handle.texture = Some(asset_server.load(sprite_path));
-                    //     }
-                }
+                player_transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.); 
             }
         }
     }
