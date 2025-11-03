@@ -77,7 +77,7 @@ pub struct KinematicCollider {
     pub shape: Aabb2d,
 }
 
-// Light
+// Stores a light source. Info is sent to shader.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct LightSource {
     pub position: Vec3,
