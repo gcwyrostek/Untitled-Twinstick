@@ -1,7 +1,7 @@
 use crate::{
-    components::Health, components::KinematicCollider, events::DamagePlayerEvent,
+    GameState, components::Health, components::KinematicCollider, events::DamagePlayerEvent,
     light_manager::Lights, player::Player, player_material::PlayerBaseMaterial,
-    projectile::Projectile, GameState,
+    projectile::Projectile,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::{prelude::*, render::render_resource::DownlevelFlags};
