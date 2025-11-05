@@ -27,6 +27,13 @@ impl LocalControl {
         return self.player_type;
     }
 
+    //Setter for net_angle
+    pub fn set_angle(&mut self, angle: f32) {
+        //This assumes that you've already rounded the float to 1 decimal point
+        let angle_as_i8 = (angle * 10.) as i8;
+        self.p_angle = angle_as_i8 as u8;
+    }
+
     //Getter for p_angle
     pub fn get_angle(&self) -> f32 {
         //This assumes that you've already rounded the float to 1 decimal point

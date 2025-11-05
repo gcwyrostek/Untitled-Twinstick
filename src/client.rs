@@ -145,6 +145,7 @@ pub fn input_converter(
     input: Res<ButtonInput<KeyCode>>,
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
+    p_loc: Query<&mut LocalControl, With<LocalControl>>,
 ) {
     let mut input_result: u8 = 0;
     //WASDL
@@ -168,8 +169,14 @@ pub fn input_converter(
         input_result += 2;
     }
 
+    let mut angle_result: u8 = 0;
+
     //UPDATE THIS AFTER YOUR GET NET CONTROL FOR CLIENT
-    let angle_result: u8 = 0;
+    for i in p_loc {
+        if i.player_type == PlayerType::Local {
+            angle_result = i.p_angle;
+        }
+    }
 
     socket
         .socket
