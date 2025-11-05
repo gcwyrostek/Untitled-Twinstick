@@ -1,9 +1,9 @@
 use crate::light_manager::Lights;
 use crate::{
-    components::FlowMap, components::Health, components::KinematicCollider,
+    GameState, components::FlowMap, components::Health, components::KinematicCollider,
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
     local_control::LocalControl, net_control::NetControl, net_control::PlayerType,
-    player_material::PlayerBaseMaterial, GameState,
+    player_material::PlayerBaseMaterial,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::math::bounding::IntersectsVolume;

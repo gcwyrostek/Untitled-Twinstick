@@ -1,5 +1,5 @@
-use crate::{components::LightSource, player_material::PlayerBaseMaterial};
 use crate::player::Player;
+use crate::{components::LightSource, player_material::PlayerBaseMaterial};
 use bevy::{prelude::*, render::render_resource::ShaderType};
 
 // Set number of total lights here, as well as in player_base.wgsl. Current limit of 4 light sources
@@ -25,7 +25,8 @@ impl Plugin for LightSourcePlugin {
                     collect_lights_into_resource,
                     sync_lights_to_players,
                     update_material_lights,
-                ).chain(),
+                )
+                    .chain(),
             );
     }
 }
@@ -141,7 +142,7 @@ pub fn sync_lights_to_players(
     player_query: Query<&Transform, With<Player>>,
     mut lights_res: ResMut<Lights>,
 ) {
-    // Collect up to 4 player positions and rotations in separate vectors 
+    // Collect up to 4 player positions and rotations in separate vectors
     let mut player_positions = Vec::new();
     let mut player_rotations = Vec::new();
     // Depending on how many players are in the lobby, push their positions
@@ -157,7 +158,7 @@ pub fn sync_lights_to_players(
             lights_res.lights[i].position = [pos.x, pos.y, pos.z].into();
         }
     }
-    // Assign player rotations to lights too 
+    // Assign player rotations to lights too
     for (i, rot) in player_rotations.iter().enumerate() {
         if i < lights_res.lights.len() {
             //lights_res.lights[i].angle = rot.z;

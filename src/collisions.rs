@@ -1,4 +1,4 @@
-use crate::{components::KinematicCollider, components::StaticCollider, GameState};
+use crate::{GameState, components::KinematicCollider, components::StaticCollider};
 use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 pub struct CollisionsPlugin;
