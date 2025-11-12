@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 use bevy::image::ImageSampler;
 use bevy::render::render_resource::*;
-use bevy::camera::visibility::RenderLayers;
-use bevy::sprite_render::{Material2d, Material2dPlugin};
+use bevy::render::view::RenderLayers;
+use bevy::render::camera::RenderTarget;
+use bevy::sprite::{Material2d, Material2dPlugin, AlphaMode2d};
 use bevy::math::primitives::Rectangle;
-use bevy::shader::ShaderRef;
+use bevy::render::render_resource::ShaderRef;
+use crate::player::Player;
 
 pub struct SimpleDeferredLitePlugin;
 
@@ -18,22 +20,20 @@ impl Plugin for SimpleDeferredLitePlugin {
             .init_resource::<LightingHandle>()
             .add_systems(Startup, (
                 setup_normals_target,
-                setup_main_camera,
                 setup_normals_camera.after(setup_normals_target),
                 setup_lighting_fullscreen.after(setup_normals_target),
             ))
             .add_systems(Update, (
                 spawn_normals_proxy_for_added,
                 handle_resize,
+                update_light_from_player,
             ));
     }
 }
 
-// Tag sprites we want lit
 #[derive(Component)]
 pub struct DeferredLit2D;
 
-// Handle to the fullscreen lighting material so you can tweak parameters at runtime.
 #[derive(Resource, Default)]
 pub struct LightingHandle(pub Option<Handle<LightingMaterial>>);
 
@@ -51,7 +51,6 @@ struct NormalsProxy;
 
 #[derive(AsBindGroup, TypePath, Asset, Clone, Default)]
 pub struct NormalsMaterial {
-    // Later i can maybe add a normal map here. Will keep for now 
     #[texture(0)]
     #[sampler(1)]
     pub normal_map: Option<Handle<Image>>,
@@ -65,9 +64,10 @@ impl Material2d for NormalsMaterial {
 pub struct LightingParams {
     pub view_size: Vec2,        //
     pub _pad0: Vec2,            //
-    pub light_pos_radius: Vec4, // z will always be 0 for now
+    pub light_pos_radius: Vec4, // xyz = position, w = radius
     pub light_color_int:  Vec4, // r,g,b,intensity
     pub ambient:          Vec4, // r,g,b,_
+    pub cone_angle_dir:   Vec4, // x = cone angle (degrees), y = direction angle (radians), z,w = padding
 }
 
 #[derive(AsBindGroup, TypePath, Asset, Clone)]
@@ -82,8 +82,8 @@ pub struct LightingMaterial {
 impl Material2d for LightingMaterial {
     fn fragment_shader() -> ShaderRef { "shaders/lighting2d.wgsl".into() }
 
-    fn alpha_mode(&self) -> bevy::sprite_render::AlphaMode2d {
-        bevy::sprite_render::AlphaMode2d::Blend
+    fn alpha_mode(&self) -> AlphaMode2d {
+        AlphaMode2d::Blend
     }
 }
 
@@ -111,18 +111,8 @@ fn setup_normals_target(
     rt.size = size;
 }
 
-fn setup_main_camera(mut commands: Commands) {
-    // Main camera that renders the final result (albedo layer = layer 0)
-    commands.spawn((
-        Camera2d::default(),
-        Camera {
-            order: 1, // render after normals
-            ..default()
-        },
-        RenderLayers::layer(LAYER_ALBEDO),
-        Name::new("CameraMain"),
-    ));
-}
+// Note: We don't create a main camera here because the existing CameraPlugin
+// already handles that. The existing camera will render layer 0 (LAYER_ALBEDO).
 
 fn setup_normals_camera(mut commands: Commands, rt: Res<NormalsTarget>) {
     // Camera that renders normals (layer 1) to the offscreen render target
@@ -130,7 +120,10 @@ fn setup_normals_camera(mut commands: Commands, rt: Res<NormalsTarget>) {
         Camera2d::default(),
         Camera {
             order: 0, // rendering early
-            target: bevy::camera::RenderTarget::Image(rt.handle.as_ref().unwrap().clone().into()),
+            target: RenderTarget::Image(bevy::render::camera::ImageRenderTarget {
+                handle: rt.handle.as_ref().unwrap().clone(),
+                scale_factor: bevy::math::FloatOrd(1.0),
+            }),
             ..default()
         },
         RenderLayers::layer(LAYER_NORMALS),
@@ -158,9 +151,10 @@ fn setup_lighting_fullscreen(
         params: LightingParams {
             view_size: Vec2::new(win.width(), win.height()),
             _pad0: Vec2::ZERO,
-            light_pos_radius: Vec4::new(0.0, 0.0, 0.0, 600.0), // origin, 600px radius
-            light_color_int:  Vec4::new(1.0, 0.95, 0.8, 5.0),   // warm light, intensity 5
-            ambient:          Vec4::new(0.05, 0.05, 0.05, 0.0),
+            light_pos_radius: Vec4::new(0.0, 0.0, 0.0, 800.0), // origin, 800px radius (larger range)
+            light_color_int:  Vec4::new(1.0, 0.95, 0.8, 1.5),   // warm light, intensity 1.5
+            ambient:          Vec4::new(0.0, 0.0, 0.0, 0.0),    // Completely dark ambient for strong flashlight effect
+            cone_angle_dir:   Vec4::new(80.0, 0.0, 0.0, 0.0),   // 80 degree cone, facing right initially
         },
         normals_tex: rt.handle.as_ref().unwrap().clone(),
     });
@@ -170,13 +164,11 @@ fn setup_lighting_fullscreen(
     commands.spawn((
         Mesh2d(fs_mesh),
         MeshMaterial2d(mat),
-        Transform::from_xyz(0.0, 0.0, 10.0),
+        Transform::from_xyz(0.0, 0.0, 999.0), // High z to render on top
         RenderLayers::layer(LAYER_ALBEDO),
         Name::new("LightingFSQuad"),
     ));
 }
-
-// Runtime mirror lit sprites into normals pass
 
 fn spawn_normals_proxy_for_added(
     mut commands: Commands,
@@ -190,12 +182,10 @@ fn spawn_normals_proxy_for_added(
         let rect = Rectangle { half_size: size * 0.5, ..Default::default() };
         let mesh = meshes.add(Mesh::from(rect));
 
-        // Load normal map for enemy (hardcoded for now)
         let mat = normals_assets.add(NormalsMaterial {
             normal_map: Some(assets.load("enemy/enemy_standard_normal.png")),
         });
 
-        // Child follows parent transform; render only into normals camera
         let child = commands
             .spawn((
                 Mesh2d(mesh),
@@ -211,10 +201,8 @@ fn spawn_normals_proxy_for_added(
     }
 }
 
-// handle window resize
-
 fn handle_resize(
-    mut ev: MessageReader<bevy::window::WindowResized>,
+    mut ev: EventReader<bevy::window::WindowResized>,
     mut images: ResMut<Assets<Image>>,
     mut rt: ResMut<NormalsTarget>,
     mut mats: ResMut<Assets<LightingMaterial>>,
@@ -223,7 +211,6 @@ fn handle_resize(
     for e in ev.read() {
         let new = UVec2::new(e.width as u32, e.height as u32);
 
-        // Resize normals RT
         if let Some(handle) = &rt.handle {
             if let Some(img) = images.get_mut(handle) {
                 img.resize(Extent3d { width: new.x, height: new.y, depth_or_array_layers: 1 });
@@ -231,10 +218,28 @@ fn handle_resize(
         }
         rt.size = new;
 
-        // Update fullscreen lighting params
         if let Some(h) = &lh.0 {
             if let Some(mat) = mats.get_mut(h) {
                 mat.params.view_size = Vec2::new(e.width, e.height);
+            }
+        }
+    }
+}
+
+fn update_light_from_player(
+    player_query: Query<&Transform, With<Player>>,
+    mut mats: ResMut<Assets<LightingMaterial>>,
+    lh: Res<LightingHandle>,
+) {
+    if let Some(player_transform) = player_query.iter().next() {
+        if let Some(h) = &lh.0 {
+            if let Some(mat) = mats.get_mut(h) {
+                mat.params.light_pos_radius.x = player_transform.translation.x;
+                mat.params.light_pos_radius.y = player_transform.translation.y;
+                mat.params.light_pos_radius.z = player_transform.translation.z;
+
+                let (_, _, z_rotation) = player_transform.rotation.to_euler(EulerRot::XYZ);
+                mat.params.cone_angle_dir.y = z_rotation + std::f32::consts::PI / 2.0;
             }
         }
     }

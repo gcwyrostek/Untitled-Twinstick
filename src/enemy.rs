@@ -1,7 +1,9 @@
 use crate::{
-    GameState, components::Health, events::DamagePlayerEvent, light_manager::Lights,
-    player::Player, player_material::PlayerBaseMaterial, projectile::Projectile,
+    GameState, components::Health, components::KinematicCollider, events::DamagePlayerEvent,
+    light_manager::Lights, player::Player, player_material::PlayerBaseMaterial,
+    projectile::Projectile,
 };
+use bevy::math::bounding::Aabb2d;
 use bevy::{prelude::*, render::render_resource::DownlevelFlags};
 use std::f32::consts;
 
@@ -110,6 +112,12 @@ pub fn setup_enemy(
             Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
             Velocity::new(),
             Enemy::new(EnemyType::Normal),
+            KinematicCollider {
+                shape: Aabb2d {
+                    min: Vec2 { x: 0., y: 0. },
+                    max: Vec2 { x: 64., y: 64. },
+                },
+            },
             Health::new(NORMAL_HEALTH),
         ));
     }
