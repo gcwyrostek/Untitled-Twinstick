@@ -1,6 +1,6 @@
 use crate::{
-    AssignedType, GameState, LogicType, local_control::LocalControl, net_control::NetControl,
-    net_control::PlayerType, player::Player,
+    AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType,
+    player::Player,
 };
 use bevy::prelude::*;
 use std::net::UdpSocket;
@@ -91,27 +91,29 @@ fn client_connect(socket: ResMut<SocketResource>) {
 fn client_run(
     mut commands: Commands,
     socket: ResMut<'_, SocketResource>,
-    mut p_loc: Query<&mut LocalControl, With<LocalControl>>,
+    mut p_loc: Query<&mut NetControl, With<NetControl>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let mut buf = [0; 10];
-    /*socket
-    .socket
-    .send_to(&[9; 10], "127.0.0.1:2525")
-    .expect("couldn't send data");*/
-    for i in 1..4 {
+    let mut buf = [0; 11];
+
+    for i in 1..8 {
         match socket.socket.recv_from(&mut buf) {
             Ok((amt, src)) => {
                 //info!("{:?} + {:?} + {:?}", amt, src, buf);
                 match buf[0] {
-                    //Code 0 -> Game Started. Send player counts for LocalControl initialization.
+                    //Code 0 -> Game Started. Send player counts for NetControl initialization.
                     0 => {
                         for i in 0..buf[1] {
                             if i == buf[2] {
-                                commands.spawn(LocalControl::new(PlayerType::Local, i));
+                                commands.spawn(NetControl::new(false, PlayerType::Local, i, None));
                                 info!("I am player: {}", i);
                             } else {
-                                commands.spawn(LocalControl::new(PlayerType::Network, i));
+                                commands.spawn(NetControl::new(
+                                    false,
+                                    PlayerType::Network,
+                                    i,
+                                    None,
+                                ));
                                 info!("Created net player: {}", i);
                             }
                         }
@@ -120,11 +122,13 @@ fn client_run(
                         next_state.set(GameState::Playing);
                     }
 
-                    //Code 1 -> Player position update.
+                    //Code 1 -> Player position/angle update.
                     1 => {
                         for mut i in p_loc.iter_mut() {
-                            if i.player_id == buf[1] {
-                                i.set_p_pos(buf);
+                            //The first check hard limits us to 4 players (pid 0 to 3) as I started packing shooting into the same byte.
+                            //The second check prevents server from overwriting active player info. Will need to add 'else' to handle rollback system
+                            if i.player_id == (buf[1] & 3) && i.player_type == PlayerType::Network {
+                                i.set_player_state(buf);
                             }
                         }
                     }
@@ -145,10 +149,10 @@ pub fn input_converter(
     input: Res<ButtonInput<KeyCode>>,
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
-    p_loc: Query<&mut LocalControl, With<LocalControl>>,
+    p_loc: Query<&mut NetControl, With<NetControl>>,
 ) {
     let mut input_result: u8 = 0;
-    //WASDL
+    //WASD00L0
     if input.pressed(KeyCode::KeyW) {
         input_result += 128;
     }
@@ -169,19 +173,16 @@ pub fn input_converter(
         input_result += 2;
     }
 
-    let mut angle_result: u8 = 0;
-
     //UPDATE THIS AFTER YOUR GET NET CONTROL FOR CLIENT
     for i in p_loc {
         if i.player_type == PlayerType::Local {
-            angle_result = i.p_angle;
+            socket
+                .socket
+                .send_to(&[input_result, i.net_angle], "127.0.0.1:2525")
+                .expect("couldn't send data");
         }
     }
 
-    socket
-        .socket
-        .send_to(&[input_result, angle_result], "127.0.0.1:2525")
-        .expect("couldn't send data");
     //info!("WASD");
     //info!("{:08b}", input_result);
 
