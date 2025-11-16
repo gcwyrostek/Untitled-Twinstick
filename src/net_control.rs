@@ -6,21 +6,32 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 //NetControl gives the application access to the information sent by the clients
 #[derive(Component)]
 pub struct NetControl {
+    pub host: bool,
     pub player_type: PlayerType,
+    pub player_id: u8,
+
     pub net_input: u8,
     pub net_angle: u8,
-    pub player_id: u8,
-    player_addr: SocketAddr,
+    pub p_pos: Vec3,
+    pub p_shot: bool,
+
+    //Net
+    player_addr: Option<SocketAddr>,
     player_pos_x: i32,
     player_pos_y: i32,
 }
 impl NetControl {
-    pub fn new(ptype: PlayerType, pid: u8, addr: SocketAddr) -> Self {
+    pub fn new(is_host: bool, ptype: PlayerType, pid: u8, addr: Option<SocketAddr>) -> Self {
         Self {
+            host: is_host,
             player_type: ptype,
+            player_id: pid,
+
             net_input: 0,
             net_angle: 0,
-            player_id: pid,
+            p_pos: Vec3::ZERO,
+            p_shot: false,
+
             player_addr: addr,
             player_pos_x: 0,
             player_pos_y: 0,
@@ -33,8 +44,13 @@ impl NetControl {
     }
 
     //Getter for player_addr
-    pub fn get_addr(&self) -> SocketAddr {
+    pub fn get_addr(&self) -> Option<SocketAddr> {
         return self.player_addr;
+    }
+
+    //Getter for p_pos
+    pub fn get_p_pos(&self) -> Vec3 {
+        return self.p_pos;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +95,7 @@ impl NetControl {
     pub fn get_angle(&self) -> f32 {
         //This assumes that you've already rounded the float to 1 decimal point
         let angle_as_i8 = (self.net_angle as i8);
-        return angle_as_i8 as f32;
+        return (angle_as_i8 as f32) / 10.;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -117,15 +133,37 @@ impl NetControl {
     ///                                                                                                      ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    pub fn get_out_packet(&self, op: u8, pid: u8) -> [u8; 10] {
-        let mut out_pack: [u8; 10] = [0; 10];
+    pub fn get_out_packet(&self, op: u8, pid: u8) -> [u8; 11] {
+        let mut out_pack: [u8; 11] = [0; 11];
         let out_x = self.get_pos_x();
         let out_y = self.get_pos_y();
         out_pack[0] = op;
-        out_pack[1] = pid;
+        //I'm packing shooting into the player_id byte and no one can stop me
+        out_pack[1] = ((self.net_input & 3) << 6) + pid;
         out_pack[2..6].copy_from_slice(&out_x);
         out_pack[6..10].copy_from_slice(&out_y);
+        out_pack[10] = self.net_angle;
         return out_pack;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///                                            Incoming Packet                                           ///
+    ///                                                                                                      ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    pub fn set_player_state(&mut self, pack: [u8; 11]) {
+        let mut unpack_x: [u8; 4] = [0; 4];
+        let mut unpack_y: [u8; 4] = [0; 4];
+        unpack_x.copy_from_slice(&pack[2..6]);
+        unpack_y.copy_from_slice(&pack[6..10]);
+        let x = i32::from_ne_bytes(unpack_x);
+        let y = i32::from_ne_bytes(unpack_y);
+        self.p_pos = Vec3::new(x as f32, y as f32, 0.);
+        self.p_shot = { pack[1] & 128 == 128 };
+        self.net_angle = pack[10];
+        //info!("Player {}'s Position: {:?}", self.player_id, self.p_pos);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////

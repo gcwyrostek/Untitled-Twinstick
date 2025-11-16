@@ -1,3 +1,6 @@
+//Hides the warnings that we were collectively ignoring
+#![allow(warnings)]
+
 use crate::pickup_system::PickupPlugin;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{
@@ -32,7 +35,6 @@ mod wall;
 mod collisions;
 mod game_over;
 mod lobby;
-mod local_control;
 mod net_control;
 mod slideshow;
 
