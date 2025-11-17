@@ -42,6 +42,12 @@ impl Plugin for PlayerPlugin {
 #[derive(Component)]
 pub struct Player;
 
+impl Player {
+    pub fn charge_battery(&mut self, value: i32) {
+        
+    }
+}
+
 #[derive(Component)]
 pub struct FireCooldown(Timer);
 

@@ -51,7 +51,7 @@ pub fn setup_lights(mut commands: Commands) {
             // For cone lights, 'cone' = angle of the cone.
             // 'angle' is only for cone lights
             // range does nothing for now. all lights have infinite range.
-            LightSource::new(transform.translation, 1.0, 15.0, 80, 0.0),
+            LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
         )
     });
     commands.spawn({
