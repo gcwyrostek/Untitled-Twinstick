@@ -1,4 +1,7 @@
-use crate::{GameState, components::Health, events::DamagePlayerEvent, player::Player};
+use crate::{
+    collectible::PlayerInventory, components::Health, events::DamagePlayerEvent, player::Player,
+    GameState,
+};
 use bevy::prelude::*;
 
 pub struct UIPlugin;
@@ -6,7 +9,10 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(OnExit(GameState::Playing), cleanup_ui)
-            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)));
+            .add_systems(
+                Update,
+                (player_damage, update_ammo_ui).run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
@@ -16,10 +22,20 @@ pub struct HealthBar;
 #[derive(Component)]
 struct HealthUIRoot;
 
+#[derive(Component)]
+struct AmmoUIRoot;
+
+#[derive(Component)]
+struct AmmoText;
+
 const HEALTH_BAR_W: f32 = 64.0;
 const HEALTH_BAR_H: f32 = 216.0;
 
-pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    inventory: Res<PlayerInventory>,
+) {
     // Root UI node positioned at top-left of the camera
     commands
         .spawn((
@@ -58,6 +74,30 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 HealthBar,
             ));
         });
+
+    // Ammo text in the bottom-right corner
+    let ammo_string = format!("{}/{}", inventory.magazine, inventory.reserve);
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(24.0),
+                bottom: Val::Px(24.0),
+                ..default()
+            },
+            AmmoUIRoot,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(ammo_string),
+                TextFont {
+                    font_size: 32.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                AmmoText,
+            ));
+        });
 }
 
 pub fn player_damage(
@@ -80,8 +120,29 @@ pub fn player_damage(
     }
 }
 
-fn cleanup_ui(mut commands: Commands, query: Query<Entity, With<HealthUIRoot>>) {
-    for entity in &query {
+fn cleanup_ui(
+    mut commands: Commands,
+    health_query: Query<Entity, With<HealthUIRoot>>,
+    ammo_query: Query<Entity, With<AmmoUIRoot>>,
+) {
+    for entity in &health_query {
         commands.entity(entity).despawn();
+    }
+
+    for entity in &ammo_query {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn update_ammo_ui(
+    inventory: Res<PlayerInventory>,
+    mut query: Query<&mut Text, With<AmmoText>>,
+) {
+    if !inventory.is_changed() {
+        return;
+    }
+
+    if let Ok(mut text) = query.get_single_mut() {
+        *text = Text::new(format!("{}/{}", inventory.magazine, inventory.reserve));
     }
 }

@@ -87,9 +87,10 @@ fn pickup_system(
                 }
             }
             OldCollectibleKind::Ammo => {
-                ammo_writer.write(AmmoPickupEvent {
-                    amount: col.amount.max(0),
-                });
+                let added = inventory.add_to_reserve(col.amount.max(0));
+                if added > 0 {
+                    ammo_writer.write(AmmoPickupEvent { amount: added });
+                }
             }
             OldCollectibleKind::Battery => {
                 battery_writer.write(BatteryPickupEvent {
@@ -121,9 +122,10 @@ fn pickup_system(
                 }
             }
             NewCollectibleType::Ammo(amount) => {
-                ammo_writer.write(AmmoPickupEvent {
-                    amount: amount.max(0),
-                });
+                let added = inventory.add_to_reserve(amount.max(0));
+                if added > 0 {
+                    ammo_writer.write(AmmoPickupEvent { amount: added });
+                }
             }
             NewCollectibleType::Battery(amount) => {
                 battery_writer.write(BatteryPickupEvent {

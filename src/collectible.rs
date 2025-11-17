@@ -19,9 +19,11 @@ pub enum CollectibleType {
 #[derive(Resource)]
 pub struct PlayerInventory {
     pub revive_kits: i32,
-    pub ammo: i32,
+    pub magazine: i32,      // Change this to adjust the current magazine size.
+    pub reserve: i32,       // Change this to adjust the current reserve size.
     pub max_revive_kits: i32,
-    pub max_ammo: i32,
+    pub max_magazine: i32,  // Change this to set the magazine capacity.
+    pub max_reserve: i32,   // Change this to set the reserve capacity.
     pub has_flashlight: bool,
 }
 
@@ -29,11 +31,75 @@ impl Default for PlayerInventory {
     fn default() -> Self {
         Self {
             revive_kits: 0,
-            ammo: 30, // Start with 30 bullets
+            magazine: 30,     // Starting magazine size.
+            reserve: 60,      // Starting reserve size.
             max_revive_kits: 1,
-            max_ammo: 120,
+            max_magazine: 30, // Default magazine capacity.
+            max_reserve: 180, // Default reserve capacity.
             has_flashlight: false,
         }
+    }
+}
+
+impl PlayerInventory {
+    pub fn has_available_ammo(&self) -> bool {
+        self.magazine > 0 || self.reserve > 0
+    }
+
+    pub fn reload(&mut self) -> bool {
+        if self.reserve <= 0 || self.magazine >= self.max_magazine {
+            return false;
+        }
+
+        let needed = self.max_magazine - self.magazine;
+        let to_load = needed.min(self.reserve);
+        self.magazine += to_load;
+        self.reserve -= to_load;
+        to_load > 0
+    }
+
+    pub fn ensure_magazine_ready(&mut self) {
+        if self.magazine == 0 {
+            self.reload();
+        }
+    }
+
+    pub fn consume_rounds(&mut self, rounds: i32) -> bool {
+        if rounds <= 0 {
+            return true;
+        }
+
+        let mut remaining = rounds;
+
+        while remaining > 0 {
+            if self.magazine == 0 {
+                if !self.reload() {
+                    return false;
+                }
+            }
+
+            self.magazine -= 1;
+            remaining -= 1;
+        }
+
+        true
+    }
+
+    pub fn add_to_reserve(&mut self, rounds: i32) -> i32 {
+        if rounds <= 0 {
+            return 0;
+        }
+
+        let space = (self.max_reserve - self.reserve).max(0);
+        let added = rounds.min(space);
+        self.reserve += added;
+
+        // Auto reload if magazine is empty and reserve now has ammo
+        if self.magazine == 0 {
+            self.ensure_magazine_ready();
+        }
+
+        added
     }
 }
 
@@ -60,15 +126,16 @@ pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>
         ));
     }
 
-    // Spawn some ammo pickups
-    for i in 0..5 {
+    // Spawn some bullet pickups (ammo)
+    for i in 0..3 {
+        // Change the range upper bound to control how many bullet pickups spawn.
         commands.spawn((
-            Sprite::from_image(asset_server.load("textures/ammo_pickup.png")),
-            Transform::from_xyz(-200.0 + (i as f32 * 100.0), -200.0, 5.0) // Exact location, could be replaced with random in the future
-                .with_scale(Vec3::splat(1.5)), // 1.5x larger than original size
+            Sprite::from_image(asset_server.load("textures/bullet.png")),
+            Transform::from_xyz(-200.0 + (i as f32 * 100.0), -200.0, 5.0)
+                .with_scale(Vec3::splat(0.6)),
             Collectible {
-                collectible_type: CollectibleType::Ammo(15), // Ammo amount
-                amount: 15,                                  // Ammo amount
+                collectible_type: CollectibleType::Ammo(30),
+                amount: 30,
             },
         ));
     }
@@ -133,18 +200,12 @@ pub fn use_revive_kit(
 
 // Helper function to consume ammo
 pub fn consume_ammo(inventory: &mut ResMut<PlayerInventory>, amount: i32) -> bool {
-    if inventory.ammo >= amount {
-        inventory.ammo -= amount;
-        println!("Consumed {} ammo. Remaining: {}", amount, inventory.ammo);
-        return true;
-    }
-    println!("No ammos! Need: {}, Have: {}", amount, inventory.ammo);
-    false
+    inventory.consume_rounds(amount)
 }
 
 // Helper function to check if player can shoot
 pub fn can_shoot(inventory: &Res<PlayerInventory>) -> bool {
-    inventory.ammo > 0
+    inventory.has_available_ammo()
 }
 
 // Helper function to grant flashlight
