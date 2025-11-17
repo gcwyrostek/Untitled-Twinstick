@@ -92,15 +92,17 @@ fn pickup_system(
                 });
             }
             OldCollectibleKind::ReviveKit => {
-                if let Some(h) = player_health_opt.as_deref_mut() {
-                    h.current = h.max; //refill health
-                }
+                if inventory.revive_kits < inventory.max_revive_kits {
+                    inventory.revive_kits += 1;
+                    revive_writer.write(ReviveKitPickupEvent);
+                    commands.entity(entity).despawn();
+                    println!("Collected a revive kit! Total: {}", inventory.revive_kits);
 
-                revive_writer.write(ReviveKitPickupEvent);
+                }
             }
         }
 
-        commands.entity(entity).despawn();
+        //commands.entity(entity).despawn();
     }
 
     // Handle new collectible system items (collectible.rs)
@@ -122,17 +124,20 @@ fn pickup_system(
                 battery_writer.write(BatteryPickupEvent { amount: amount.max(0) });
             }
             NewCollectibleType::ReviveKit => {
-                if let Some(h) = player_health_opt.as_deref_mut() {
-                    h.current = h.max; // refill health
+                if inventory.revive_kits < inventory.max_revive_kits {
+                    inventory.revive_kits += 1;
+                    revive_writer.write(ReviveKitPickupEvent);
+                    commands.entity(entity).despawn();
+                    println!("Collected a revive kit! Total: {}", inventory.revive_kits);
+
                 }
-                revive_writer.write(ReviveKitPickupEvent);
             }
             NewCollectibleType::Flashlight => {
                 pickup_flashlight(&mut inventory);
             }
         }
 
-        commands.entity(entity).despawn();
+        //commands.entity(entity).despawn();
     }
 }
 

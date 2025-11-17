@@ -48,7 +48,7 @@ impl Plugin for CollectiblePlugin {
 
 pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Spawn some revive kits
-    for i in 0..3 {
+    /*for i in 0..3 {
         commands.spawn((
             Sprite::from_image(asset_server.load("revive kit/Revive Kit_albedo.png")),
             Transform::from_xyz(200.0 + (i as f32 * 150.0), 300.0, 5.0) // Exact location, could be replaced with random in the future
@@ -58,7 +58,7 @@ pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>
                 amount: 1,                                    // Revive kit amount
             },
         ));
-    }
+    }*/
 
     // Spawn some ammo pickups
     for i in 0..5 {
