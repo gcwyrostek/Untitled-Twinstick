@@ -1,4 +1,5 @@
 use crate::{
+    collectible::{consume_ammo, PlayerInventory},
     GameState, net_control::NetControl, net_control::PlayerType, player::FireCooldown,
     player::Player,
 };
@@ -55,6 +56,7 @@ pub fn projectile_inputs(
     time: Res<Time>,
     asset_server: Res<AssetServer>,
     mut pos_history: ResMut<MouseMemory>,
+    mut inventory: ResMut<PlayerInventory>,
 ) {
     let shooting = mouse_button_io.pressed(MouseButton::Left);
 
@@ -64,17 +66,21 @@ pub fn projectile_inputs(
 
         //Host Shooting
         if shooting && cooldown.tick(time.delta()) && netcontrol.get_type() == PlayerType::Local {
-            commands.spawn((
-                Sprite::from_image(asset_server.load("textures/bullet.png")),
-                Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
-                Velocity {
-                    velocity: dir * PROJECTILE_SPEED,
-                },
-                Projectile,
-            ));
+            if inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
+                commands.spawn((
+                    Sprite::from_image(asset_server.load("textures/bullet.png")),
+                    Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
+                    Velocity {
+                        velocity: dir * PROJECTILE_SPEED,
+                    },
+                    Projectile,
+                ));
 
-            if netcontrol.host {
-                netcontrol.net_input = 2;
+                if netcontrol.host {
+                    netcontrol.net_input = 2;
+                }
+            } else if netcontrol.host {
+                netcontrol.net_input = 0;
             }
         }
         //Host NOT Shooting
