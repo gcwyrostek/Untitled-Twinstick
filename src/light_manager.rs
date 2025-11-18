@@ -157,7 +157,7 @@ pub fn sync_lights_to_players(
             lights_res.lights[i].position = [pos.x, pos.y, pos.z].into();
         }
     }
-    // Assign player rotations to lights too 
+    // Assign player rotations to lights too
     for (i, rot) in player_rotations.iter().enumerate() {
         if i < lights_res.lights.len() {
             //lights_res.lights[i].angle = rot.z;

@@ -108,6 +108,7 @@ pub fn setup_enemy(
                 lights: lights.lights,
                 normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
                 mesh_rotation: 0.0,
+                sdf_texture: None, // Will be set by update system
             })),
             Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
             Velocity::new(),

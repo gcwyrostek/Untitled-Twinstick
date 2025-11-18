@@ -103,6 +103,7 @@ pub fn setup_player(
                 lights: lights.lights,
                 normal: Some(asset_server.load("player/player_normal.png")),
                 mesh_rotation: 0.0,
+                sdf_texture: None, // Will be set by update system
             })),
             Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
             // you can have a smaller player with 32 and larger player with 128

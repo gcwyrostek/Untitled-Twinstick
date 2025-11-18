@@ -20,6 +20,7 @@ mod pickup_system;
 mod player;
 mod player_material;
 mod projectile;
+mod sdf_shadows;
 mod server;
 mod tiling;
 mod ui;
@@ -119,6 +120,7 @@ fn main() {
         ))
         .add_plugins((
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
+            sdf_shadows::SdfShadowsPlugin,
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
             PickupPlugin,

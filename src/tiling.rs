@@ -40,19 +40,8 @@ pub fn setup_tiling(
     while (y as f32) * (TILE_SIZE as f32) < map_height {
         while (x as f32) * (TILE_SIZE as f32) < map_width {
             commands.spawn((
-                Sprite::from_atlas_image(
-                    ground_handle.clone(),
-                    TextureAtlas {
-                        layout: ground_layout_handle.clone(),
-
-                        //This will randomly select a tile from the map, to add variety
-                        index: rand::random_range(0..ground_layout_len),
-                    },
-                ),
-                Transform {
-                    translation: t,
-                    ..default()
-                },
+                Sprite::from_image(ground_handle.clone()),
+                Transform::from_translation(t),
                 Tile,
             ));
 
