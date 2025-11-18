@@ -1,3 +1,6 @@
+//Hides the warnings that we were collectively ignoring
+#![allow(warnings)]
+
 use crate::pickup_system::PickupPlugin;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{
@@ -23,6 +26,8 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod inventory_ui;
+mod camera;
 mod wall;
 //mod reticle;
 //mod ground_tiles;
@@ -32,7 +37,6 @@ mod wall;
 mod collisions;
 mod game_over;
 mod lobby;
-mod local_control;
 mod net_control;
 mod slideshow;
 
