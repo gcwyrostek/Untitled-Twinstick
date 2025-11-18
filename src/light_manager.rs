@@ -1,6 +1,5 @@
-use crate::{
-    components::LightSource, player_material::PlayerBaseMaterial,
-};
+use crate::player::Player;
+use crate::{components::LightSource, player_material::PlayerBaseMaterial};
 use bevy::{prelude::*, render::render_resource::ShaderType};
 
 // Set number of total lights here, as well as in player_base.wgsl. Current limit of 4 light sources
@@ -17,8 +16,18 @@ impl Plugin for LightSourcePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Lights>()
             .add_systems(Startup, setup_lights)
-            .add_systems(Update, collect_lights_into_resource)
-            .add_systems(Update, update_material_rotation);
+            .add_systems(Update, update_material_rotation)
+            // Have to do these in this order to avoid flickering/lights not being
+            // updated by the time they are rendered.
+            .add_systems(
+                Update,
+                (
+                    collect_lights_into_resource,
+                    sync_lights_to_players,
+                    update_material_lights,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -38,11 +47,11 @@ pub fn setup_lights(mut commands: Commands) {
         (
             transform,
             // Here's how this works:
-            // If you want point light...'cone' = 0.
+            // If you want point light, 'cone' = 0.
             // For cone lights, 'cone' = angle of the cone.
             // 'angle' is only for cone lights
             // range does nothing for now. all lights have infinite range.
-            LightSource::new(transform.translation, 1.0, 15.0, 80, 45.0),
+            LightSource::new(transform.translation, 1.0, 15.0, 80, 0.0),
         )
     });
     commands.spawn({
@@ -52,7 +61,7 @@ pub fn setup_lights(mut commands: Commands) {
             LightSource::new(transform.translation, 0.0, 10.0, 0, 0.0),
         )
     });
-    
+
     commands.spawn({
         let transform = Transform::from_xyz(0., 0., 0.);
         (
@@ -84,8 +93,9 @@ pub fn collect_lights_into_resource(
         angle: 0.0,
         _padding: 0.0,
     }; NUM_LIGHTS as usize];
-    
-    for (i, (transform, light_source)) in lights_query.iter().take(NUM_LIGHTS as usize).enumerate() {
+
+    for (i, (transform, light_source)) in lights_query.iter().take(NUM_LIGHTS as usize).enumerate()
+    {
         light_array[i] = Light {
             position: transform.translation,
             intensity: light_source.intensity,
@@ -95,7 +105,7 @@ pub fn collect_lights_into_resource(
             _padding: 0.0,
         };
     }
-    
+
     lights_resource.lights = light_array;
     lights_resource.num_lights = NUM_LIGHTS;
 }
@@ -110,6 +120,50 @@ fn update_material_rotation(
         if let Some(material) = materials.get_mut(&mesh_material.0) {
             let (_, _, z_rotation) = transform.rotation.to_euler(EulerRot::XYZ);
             material.mesh_rotation = z_rotation;
+        }
+    }
+}
+
+// We need to access the PlayerBaseMaterial (on player and all enemies) and
+// update each light source for the fragment shader to use.
+pub fn update_material_lights(
+    lights: Res<Lights>,
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+) {
+    for (_, material) in materials.iter_mut() {
+        material.lights = lights.lights;
+    }
+}
+
+// We need to move all lights to match the players' positions and rotations.
+// The shader accesses the 'position' and 'angle' attributes of each Light,
+// so modifying the entities' transforms won't work.
+pub fn sync_lights_to_players(
+    player_query: Query<&Transform, With<Player>>,
+    mut lights_res: ResMut<Lights>,
+) {
+    // Collect up to 4 player positions and rotations in separate vectors
+    let mut player_positions = Vec::new();
+    let mut player_rotations = Vec::new();
+    // Depending on how many players are in the lobby, push their positions
+    // and rotations to each vector.
+    for transform in player_query.iter().take(4) {
+        player_positions.push(transform.translation);
+        player_rotations.push(transform.rotation);
+    }
+
+    // Assign player positions to lights
+    for (i, pos) in player_positions.iter().enumerate() {
+        if i < lights_res.lights.len() {
+            lights_res.lights[i].position = [pos.x, pos.y, pos.z].into();
+        }
+    }
+    // Assign player rotations to lights too
+    for (i, rot) in player_rotations.iter().enumerate() {
+        if i < lights_res.lights.len() {
+            //lights_res.lights[i].angle = rot.z;
+            // can't use quat
+            lights_res.lights[i].angle = rot.to_euler(EulerRot::XYZ).2.to_degrees() + 90.0;
         }
     }
 }

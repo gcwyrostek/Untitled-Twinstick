@@ -1,5 +1,5 @@
-use crate::{GameState, WIN_H, WIN_W};
 use crate::camera::MapBounds;
+use crate::{GameState, WIN_H, WIN_W};
 use bevy::prelude::*;
 
 const TILE_SIZE: u32 = 128;
@@ -35,7 +35,7 @@ pub fn setup_tiling(
     let mut x = 0;
     let mut y = 0;
     let mut t = Vec3::new(-x_bound, -y_bound, -10.);
-    
+
     // Tile the entire map area
     while (y as f32) * (TILE_SIZE as f32) < map_height {
         while (x as f32) * (TILE_SIZE as f32) < map_width {
@@ -72,6 +72,9 @@ pub fn setup_tiling(
         height: map_height,
     });
 
-    info!("Map bounds set to width: {}, height: {}", map_width, map_height);
+    info!(
+        "Map bounds set to width: {}, height: {}",
+        map_width, map_height
+    );
     info!("Total tiles spawned: {}", x * y);
 }

@@ -1,4 +1,5 @@
 use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::ShaderType};
+use std::collections::HashMap;
 
 #[derive(Component)]
 pub struct Health {
@@ -23,6 +24,12 @@ impl Health {
     pub fn is_dead(&self) -> bool {
         self.current <= 0
     }
+}
+
+// Pathfinding
+#[derive(Component, Default, Debug, Clone)]
+pub struct FlowMap {
+    pub map: HashMap<IVec2, i32>,
 }
 
 // Collectibles
@@ -70,7 +77,7 @@ pub struct KinematicCollider {
     pub shape: Aabb2d,
 }
 
-// Light
+// Stores a light source. Info is sent to shader.
 #[derive(Component, Debug, Clone, Copy)]
 pub struct LightSource {
     pub position: Vec3,
@@ -82,6 +89,12 @@ pub struct LightSource {
 
 impl LightSource {
     pub fn new(position: Vec3, intensity: f32, range: f32, cone: i32, angle: f32) -> Self {
-        Self { position, intensity, range, cone, angle }
+        Self {
+            position,
+            intensity,
+            range,
+            cone,
+            angle,
+        }
     }
 }

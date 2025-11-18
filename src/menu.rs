@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::{AssignedType, GameState, LogicType};
 use bevy::prelude::*;
 
 use bevy::input::ButtonInput;
@@ -36,12 +36,9 @@ impl Plugin for MenuPlugin {
     }
 }
 
-fn on_enter_menu(
-    mut commands: Commands,
-    query: Query<Entity, With<Camera>>,
-) {
+fn on_enter_menu(mut commands: Commands, query: Query<Entity, With<Camera>>) {
     info!("STATE: MENU (blank). Click or press Enter/Space to START.");
-    
+
     if query.is_empty() {
         commands.spawn((Camera2d, MenuUI));
     }
@@ -211,6 +208,7 @@ fn on_exit_playing() {
 fn start_on_input(
     mut interaction_query: Query<(&Interaction, &MenuButton), (Changed<Interaction>, With<Button>)>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut game_type: ResMut<LogicType>,
     mut exit: EventWriter<bevy::app::AppExit>,
 ) {
     for (interaction, menu_button) in &mut interaction_query {
@@ -219,12 +217,14 @@ fn start_on_input(
                 MenuButton::Host => {
                     info!("host button pressed.");
                     next_state.set(GameState::Lobby);
+                    game_type.l_type = AssignedType::Host;
                 }
                 MenuButton::Join => {
                     info!("join button pressed.");
                     //let socket = UdpSocket::bind("127.0.0.1:24515").expect("couldn't bind to address");
                     //socket.send_to(&[5; 10], "127.0.0.1:2525").expect("couldn't send data");
                     next_state.set(GameState::Joining);
+                    game_type.l_type = AssignedType::Client;
                 }
                 MenuButton::Credits => {
                     info!("credits button pressed.");
