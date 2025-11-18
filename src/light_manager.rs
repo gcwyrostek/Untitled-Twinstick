@@ -16,6 +16,7 @@ impl Plugin for LightSourcePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Lights>()
             .add_systems(Startup, setup_lights)
+            .add_systems(Update, assign_flashlights_to_players)
             .add_systems(Update, update_material_rotation)
             // Have to do these in this order to avoid flickering/lights not being
             // updated by the time they are rendered.
@@ -51,22 +52,14 @@ pub fn setup_lights(mut commands: Commands) {
             // For cone lights, 'cone' = angle of the cone.
             // 'angle' is only for cone lights
             // range does nothing for now. all lights have infinite range.
-            LightSource::new(transform.translation, 1.0, 15.0, 80, 0.0),
+            LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
         )
     });
     commands.spawn({
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 10.0, 0, 0.0),
-        )
-    });
-
-    commands.spawn({
-        let transform = Transform::from_xyz(0., 0., 0.);
-        (
-            transform,
-            LightSource::new(transform.translation, 0.0, 15.0, 0, 0.0),
+            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
         )
     });
 
@@ -74,7 +67,15 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 15.0, 0, 0.0),
+            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
+        )
+    });
+
+    commands.spawn({
+        let transform = Transform::from_xyz(0., 0., 0.);
+        (
+            transform,
+            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
         )
     });
 }
@@ -139,31 +140,32 @@ pub fn update_material_lights(
 // The shader accesses the 'position' and 'angle' attributes of each Light,
 // so modifying the entities' transforms won't work.
 pub fn sync_lights_to_players(
-    player_query: Query<&Transform, With<Player>>,
+    players: Query<&Transform, With<Player>>,
     mut lights_res: ResMut<Lights>,
 ) {
-    // Collect up to 4 player positions and rotations in separate vectors
-    let mut player_positions = Vec::new();
-    let mut player_rotations = Vec::new();
-    // Depending on how many players are in the lobby, push their positions
-    // and rotations to each vector.
-    for transform in player_query.iter().take(4) {
-        player_positions.push(transform.translation);
-        player_rotations.push(transform.rotation);
+    for (i, transform) in players.iter().take(NUM_LIGHTS as usize).enumerate() {
+        lights_res.lights[i].position = transform.translation;
+        let (_, _, rot_z) = transform.rotation.to_euler(EulerRot::XYZ);
+        lights_res.lights[i].angle = rot_z.to_degrees() + 90.0;
     }
+}
 
-    // Assign player positions to lights
-    for (i, pos) in player_positions.iter().enumerate() {
-        if i < lights_res.lights.len() {
-            lights_res.lights[i].position = [pos.x, pos.y, pos.z].into();
-        }
-    }
-    // Assign player rotations to lights too
-    for (i, rot) in player_rotations.iter().enumerate() {
-        if i < lights_res.lights.len() {
-            //lights_res.lights[i].angle = rot.z;
-            // can't use quat
-            lights_res.lights[i].angle = rot.to_euler(EulerRot::XYZ).2.to_degrees() + 90.0;
+// This should support assigning flashlights to players once they join, since it runs in Update.
+pub fn assign_flashlights_to_players(
+    mut players: Query<&mut Player>,
+    lights: Query<Entity, With<LightSource>>,
+) {
+    // Get the first 4 lights as a Vec<Entity>
+    let flashlight_entities: Vec<Entity> = lights.iter().take(4).collect();
+
+    // Assign each player one flashlight.
+    // Should be much more consistent than previous implementation.
+    for (i, mut player) in players.iter_mut().enumerate() {
+        if i < flashlight_entities.len() {
+            // Each player has reference to their own flashlight.
+            player.flashlight = Some(flashlight_entities[i]);
+        } else {
+            player.flashlight = None;
         }
     }
 }

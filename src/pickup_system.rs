@@ -5,6 +5,10 @@ use crate::collectible::{
 use crate::components::{
     Collectible as OldCollectible, CollectibleKind as OldCollectibleKind, Health,
 };
+use crate::net_control::PlayerType;
+use crate::net_control::NetControl;
+use crate::player_material::PlayerBaseMaterial;
+use crate::light_manager::Lights;
 use crate::player::Player;
 use bevy::prelude::*;
 
@@ -36,6 +40,8 @@ impl Plugin for PickupPlugin {
             .add_event::<BatteryPickupEvent>()
             .add_event::<ReviveKitPickupEvent>()
             .add_systems(Startup, spawn_revive_kit)
+            .add_systems(Startup, spawn_battery)
+            .add_systems(Update, battery_pickup_system)
             .add_systems(Update, (pickup_system, attach_flashlight_to_player));
     }
 }
@@ -54,13 +60,57 @@ fn spawn_revive_kit(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
+fn spawn_battery(mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    lights: Res<Lights>,) {
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            color: LinearRgba::BLUE,
+            texture: Some(asset_server.load("textures/battery_albedo.png")),
+            lighting: crate::player_material::Lighting {
+                ambient_reflection_coefficient: 0.1,
+                ambient_light_intensity: 0.1,
+                diffuse_reflection_coefficient: 1.0,
+                shininess: 40.0,
+            },
+            lights: lights.lights,
+            normal: Some(asset_server.load("textures/battery_normal.png")),
+            mesh_rotation: 0.0,
+        })),
+        Transform::from_xyz(100., 0., 10.).with_scale(Vec3::splat(64.)),
+        OldCollectible::battery(500),
+    ));
+
+    commands.spawn((
+        Mesh2d(meshes.add(Rectangle::default())),
+        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+            color: LinearRgba::BLUE,
+            texture: Some(asset_server.load("textures/battery_albedo.png")),
+            lighting: crate::player_material::Lighting {
+                ambient_reflection_coefficient: 0.1,
+                ambient_light_intensity: 0.1,
+                diffuse_reflection_coefficient: 1.0,
+                shininess: 40.0,
+            },
+            lights: lights.lights,
+            normal: Some(asset_server.load("textures/battery_normal.png")),
+            mesh_rotation: 0.0,
+        })),
+        Transform::from_xyz(400., 0., 10.).with_scale(Vec3::splat(64.)),
+        OldCollectible::battery(150),
+    ));
+}
+
 /// detect collectibles near the player, apply effects, and despawn pickups.
 fn pickup_system(
     mut commands: Commands,
     mut ammo_writer: EventWriter<AmmoPickupEvent>,
     mut battery_writer: EventWriter<BatteryPickupEvent>,
     mut revive_writer: EventWriter<ReviveKitPickupEvent>,
-    mut player_q: Query<(&Transform, Option<Mut<Health>>), With<Player>>,
+    mut player_q: Query<(&Transform, Option<Mut<Health>>, &mut Player), With<Player>>,
     // Old collectibles from components.rs
     old_collectibles_q: Query<(Entity, &Transform, &OldCollectible)>,
     // New collectibles from collectible.rs
@@ -68,7 +118,7 @@ fn pickup_system(
     mut inventory: ResMut<PlayerInventory>,
 ) {
     // single_mut is the non-deprecated call
-    let (player_tf, mut player_health_opt) = match player_q.single_mut() {
+    let (player_tf, mut player_health_opt, mut player) = match player_q.single_mut() {
         Ok(v) => v,
         Err(_) => return,
     };
@@ -131,7 +181,7 @@ fn pickup_system(
             }
             NewCollectibleType::Battery(amount) => {
                 battery_writer.write(BatteryPickupEvent {
-                    amount: amount.max(0),
+                    amount: amount.max(500),
                 });
             }
             NewCollectibleType::ReviveKit => {
@@ -208,6 +258,22 @@ fn attach_flashlight_to_player(
                         commands.entity(child).despawn();
                     }
                 }
+            }
+        }
+    }
+}
+
+// This code manages picking up a battery!! It's run whenever the signal
+// that a battery has been collected is sent.
+// Max battery charge is 500, for now.
+fn battery_pickup_system(
+    mut events: EventReader<BatteryPickupEvent>,
+    mut players: Query<(&mut Player, &NetControl)>,
+) {
+    for event in events.read() {
+        for (mut player, net_control) in &mut players {
+            if net_control.player_type == PlayerType::Local {
+                player.charge_battery(event.amount);
             }
         }
     }

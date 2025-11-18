@@ -31,6 +31,10 @@ impl Plugin for PlayerPlugin {
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
             )
+            .add_systems(
+                Update,
+                drain_battery.run_if(in_state(GameState::Playing)),
+            )
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(
                 Update,
@@ -40,7 +44,19 @@ impl Plugin for PlayerPlugin {
 }
 
 #[derive(Component)]
-pub struct Player;
+pub struct Player {
+    pub charge: i32,
+    pub flashlight: Option<Entity>,
+}
+
+impl Player {
+    pub fn charge_battery(&mut self, value: i32) {
+        self.charge += value;
+        if self.charge >= 500 {
+            self.charge = 500;
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct FireCooldown(Timer);
@@ -116,7 +132,7 @@ pub fn setup_player(
             // you can have a smaller player with 32 and larger player with 128
             Velocity::new(),
             FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
-            Player,
+            Player { charge: 500, flashlight: None },
             Health::new(MAX_HEALTH),
             KinematicCollider {
                 shape: Aabb2d {
@@ -354,6 +370,33 @@ pub fn player_damage(
                     next_state.set(GameState::GameOver);
                     commands.entity(player).despawn();
                 }
+            }
+        }
+    }
+}
+
+pub fn drain_battery(
+    time: Res<Time>,
+    mut players: Query<&mut Player>,
+    mut lights: Query<&mut LightSource>,
+) {
+    let delta = time.delta_secs();
+    let max_range = 500.0;
+    let min_range = 50.0;
+
+    for mut player in players.iter_mut() {
+        // Drain battery
+        let drain_rate = 0.5;
+        if player.charge <= 0 {
+            //instant_kill();
+            // kill them
+        }
+        player.charge = (player.charge as f32 - drain_rate * delta).max(0.0) as i32;
+
+        // Update flashlight range.
+        if let Some(flashlight_entity) = player.flashlight {
+            if let Ok(mut light) = lights.get_mut(flashlight_entity) {
+                light.range = min_range + (max_range - min_range) * (player.charge as f32 / 500.0);
             }
         }
     }
