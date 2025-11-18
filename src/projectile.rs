@@ -64,7 +64,7 @@ pub fn projectile_inputs(
         let projectile_pos = transform.translation;
         let dir = transform.rotation.mul_vec3(Vec3::Y).truncate();
 
-        //Host Shooting
+        //Local Shooting
         if shooting && cooldown.tick(time.delta()) && netcontrol.get_type() == PlayerType::Local {
             if inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
                 commands.spawn((
@@ -75,7 +75,7 @@ pub fn projectile_inputs(
                     },
                     Projectile,
                 ));
-
+                //Host Shooting
                 if netcontrol.host {
                     netcontrol.net_input = 2;
                 }
@@ -83,8 +83,9 @@ pub fn projectile_inputs(
                 netcontrol.net_input = 0;
             }
         }
-        //Host NOT Shooting
+        //Local NOT Shooting
         else if !shooting && netcontrol.get_type() == PlayerType::Local {
+            //Host NOT Shooting
             if netcontrol.host {
                 netcontrol.net_input = 0;
             }
