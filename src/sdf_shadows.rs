@@ -5,10 +5,9 @@ use crate::components::StaticCollider;
 use crate::enemy::Enemy;
 use crate::player_material::PlayerBaseMaterial;
 
-/// Size of the SDF texture (512x512 balancing quality and performance)
+/// Size of the SDF texture (512x512 )
 const SDF_TEXTURE_SIZE: u32 = 512;
 
-/// World space area covered by the SDF (centered on origin)
 /// This defines a 5120x5120 world unit area
 const SDF_WORLD_SIZE: f32 = 5120.0;
 
@@ -32,7 +31,7 @@ impl FromWorld for SdfTexture {
     fn from_world(world: &mut World) -> Self {
         let mut images = world.resource_mut::<Assets<Image>>();
 
-        // Create an empty R32Float texture
+        // Create an empty  texture
         let size = Extent3d {
             width: SDF_TEXTURE_SIZE,
             height: SDF_TEXTURE_SIZE,
@@ -42,7 +41,7 @@ impl FromWorld for SdfTexture {
         let mut image = Image::new_fill(
             size,
             TextureDimension::D2,
-            &[0u8; 4], // Will be filled with f32 data
+            &[0u8; 4], 
             TextureFormat::R32Float,
             RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
         );
@@ -50,8 +49,6 @@ impl FromWorld for SdfTexture {
         // Initialize with large distances
         let data: Vec<f32> = vec![SDF_WORLD_SIZE; (SDF_TEXTURE_SIZE * SDF_TEXTURE_SIZE) as usize];
         image.data = Some(data.iter().flat_map(|f| f.to_le_bytes()).collect());
-
-        // TODO: Add linear filtering to reduce flickering - needs correct ImageSampler type for this Bevy version
 
         let texture = images.add(image);
 
@@ -67,15 +64,10 @@ struct Occluder {
 
 impl Occluder {
     /// Calculate signed distance from a point to this rectangular occluder
-    /// Returns negative if inside, positive if outside
     fn distance(&self, point: Vec2) -> f32 {
-        // Convert to local space (centered on occluder)
+        // Convert to local space 
         let local = point - self.position;
-
-        // Half extents
         let half_size = self.size * 0.5;
-
-        // Distance to edge of rectangle
         let d = local.abs() - half_size;
 
         // Outside distance + inside distance
@@ -93,26 +85,22 @@ fn generate_sdf(
     enemies: Query<&Transform, With<Enemy>>,
     walls: Query<&Transform, With<StaticCollider>>,
 ) {
-    // Collect all occluders
     let mut occluders = Vec::new();
 
     // Add enemies as occluders
     for transform in enemies.iter() {
         occluders.push(Occluder {
             position: transform.translation.truncate(),
-            // Scale already contains the final size (Rectangle mesh is 1x1, scale makes it 64x64)
             size: transform.scale.truncate(),
         });
     }
 
     // Add walls as occluders
     for transform in walls.iter() {
-        // Walls are Sprites with default scale of 1.0, but texture is 64x64
-        // If scale is ~1.0, treat as 64x64 sprite, otherwise use scale
         let wall_size = if transform.scale.x < 2.0 && transform.scale.y < 2.0 {
-            Vec2::splat(64.0) // Default wall sprite size
+            Vec2::splat(64.0) 
         } else {
-            transform.scale.truncate() // Use actual scale if it's been modified
+            transform.scale.truncate()
         };
 
         occluders.push(Occluder {
@@ -134,12 +122,10 @@ fn generate_sdf(
 
     for y in 0..SDF_TEXTURE_SIZE {
         for x in 0..SDF_TEXTURE_SIZE {
-            // Convert texture coordinate to world position
             let world_x = (x as f32 * texel_to_world) - half_world;
             let world_y = (y as f32 * texel_to_world) - half_world;
             let world_pos = Vec2::new(world_x, world_y);
 
-            // Find minimum distance to any occluder
             let mut min_distance = SDF_WORLD_SIZE;
             for occluder in &occluders {
                 let dist = occluder.distance(world_pos);
@@ -154,12 +140,11 @@ fn generate_sdf(
     image.data = Some(sdf_data.iter().flat_map(|f| f.to_le_bytes()).collect());
 }
 
-/// System that updates all PlayerBaseMaterial instances with the SDF texture
+/// System that updates all PlayerBaseMaterial instances with the SDF
 fn update_material_sdf_textures(
     sdf_texture: Res<SdfTexture>,
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
 ) {
-    // Update all materials with the SDF texture
     for (_, material) in materials.iter_mut() {
         material.sdf_texture = Some(sdf_texture.texture.clone());
     }

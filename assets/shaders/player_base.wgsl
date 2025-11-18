@@ -34,10 +34,9 @@ struct Light {
 // SDF shadow constants
 const SDF_WORLD_SIZE: f32 = 5120.0;
 const SDF_TEXTURE_SIZE: f32 = 512.0;
-const MAX_RAYMARCH_STEPS: i32 = 128; // Increased for smaller steps
-const SHADOW_THRESHOLD: f32 = 3.0; // Threshold for shadow detection (balancing coverage vs accuracy)
-
-// Convert world position to SDF texture UV coordinates
+const MAX_RAYMARCH_STEPS: i32 = 128;
+const SHADOW_THRESHOLD: f32 = 3.0;
+// Convert world position to SDF texture UV 
 fn world_to_sdf_uv(world_pos: vec2<f32>) -> vec2<f32> {
     let half_world = SDF_WORLD_SIZE * 0.5;
     let normalized = (world_pos + vec2<f32>(half_world, half_world)) / SDF_WORLD_SIZE;
@@ -51,12 +50,9 @@ fn check_shadow(pixel_world_pos: vec2<f32>, light_pos: vec3<f32>) -> f32 {
     let ray_dir = normalize(light_pos_2d - pixel_world_pos);
     let total_distance = distance(pixel_world_pos, light_pos_2d);
 
-    // Start with small bias to avoid immediate self-shadowing
-    // Then check SDF to potentially skip over the object we're on
-    var traveled = 2.0;
+    // Bias clac 
     var current_pos = pixel_world_pos + ray_dir * 2.0;
 
-    // Sample SDF at start position to see if we need more bias
     let start_uv = world_to_sdf_uv(current_pos);
     if (start_uv.x >= 0.0 && start_uv.x <= 1.0 && start_uv.y >= 0.0 && start_uv.y <= 1.0) {
         let start_sdf = textureSample(sdf_texture, sdf_sampler, start_uv).r;
@@ -72,22 +68,22 @@ fn check_shadow(pixel_world_pos: vec2<f32>, light_pos: vec3<f32>) -> f32 {
     for (var i: i32 = 0; i < MAX_RAYMARCH_STEPS; i += 1) {
         // Check if we've reached the light
         if (traveled >= total_distance) {
-            return 1.0; // Reached light without hitting occluder
+            return 1.0;
         }
 
         // Sample SDF at current position
         let uv = world_to_sdf_uv(current_pos);
 
-        // Check if UV is valid (within texture bounds)
+        // Check if UV is valid 
         if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-            return 1.0; // Outside SDF bounds, assume lit
+            return 1.0;
         }
 
         let sdf_dist = textureSample(sdf_texture, sdf_sampler, uv).r;
 
         // If we're inside or very close to an occluder, we're in shadow
         if (sdf_dist < SHADOW_THRESHOLD) {
-            return 0.0; // Hard shadow
+            return 0.0;
         }
 
         // March forward by the SDF distance with small minimum step for accuracy
@@ -97,7 +93,7 @@ fn check_shadow(pixel_world_pos: vec2<f32>, light_pos: vec3<f32>) -> f32 {
         current_pos += ray_dir * step_size;
     }
 
-    return 1.0; // Didn't hit anything, assume lit
+    return 1.0;
 }
 
 @fragment
