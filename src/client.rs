@@ -1,6 +1,7 @@
 use crate::{
     AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType,
     player::Player,
+    collectible::PlayerInventory,
 };
 use bevy::prelude::*;
 use std::net::UdpSocket;
@@ -150,6 +151,7 @@ pub fn input_converter(
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
     p_loc: Query<&mut NetControl, With<NetControl>>,
+    mut inventory: ResMut<PlayerInventory>,
 ) {
     let mut input_result: u8 = 0;
     //WASD00L0
@@ -169,11 +171,11 @@ pub fn input_converter(
         input_result += 16;
     }
 
-    if mouse_button_io.pressed(MouseButton::Left) {
+    //Ideally we would still send the click signal always, but this is easier if we aren't sending ammo info
+    if mouse_button_io.pressed(MouseButton::Left) && inventory.has_available_ammo() {
         input_result += 2;
     }
 
-    //UPDATE THIS AFTER YOUR GET NET CONTROL FOR CLIENT
     for i in p_loc {
         if i.player_type == PlayerType::Local {
             socket
