@@ -10,6 +10,8 @@ use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
+use crate::light_manager::Lights;
+use crate::collectible::PlayerInventory;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::f32::consts;
@@ -353,6 +355,22 @@ pub fn player_damage(
                     next_state.set(GameState::GameOver);
                     commands.entity(player).despawn();
                 }
+            }
+        }
+    }
+}
+
+pub fn use_revive_kit(
+    input: Res<ButtonInput<KeyCode>>,
+    mut inventory: ResMut<PlayerInventory>,
+    mut players: Query<(Entity, &mut Health), With<Player>>,
+) {
+    if input.just_pressed(KeyCode::KeyR) {
+        for (player_entity, mut player_health) in players.iter_mut() {
+            if player_health.is_dead() && inventory.revive_kits > 0 {
+                inventory.revive_kits -= 1;
+                player_health.current = player_health.max;
+                info!("Used a revive kit on player {:?}! Health restored.", player_entity);
             }
         }
     }

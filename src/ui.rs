@@ -1,3 +1,6 @@
+use crate::{GameState, components::Health, events::DamagePlayerEvent, player::Player};
+use crate::inventory_ui::{setup_revive_ui, update_revive_ui};
+use crate::player::{use_revive_kit};
 use crate::{
     collectible::PlayerInventory, components::Health, events::DamagePlayerEvent, player::Player,
     GameState,
@@ -9,10 +12,11 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(OnExit(GameState::Playing), cleanup_ui)
-            .add_systems(
-                Update,
-                (player_damage, update_ammo_ui).run_if(in_state(GameState::Playing)),
-            );
+            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
+            .add_systems(OnEnter(GameState::Playing), setup_revive_ui)
+            .add_systems(Update, update_revive_ui.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, use_revive_kit.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, (player_damage, update_ammo_ui).run_if(in_state(GameState::Playing)));
     }
 }
 

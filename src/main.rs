@@ -26,6 +26,8 @@ mod projectile;
 mod server;
 mod tiling;
 mod ui;
+mod inventory_ui;
+mod camera;
 mod wall;
 //mod reticle;
 //mod ground_tiles;
