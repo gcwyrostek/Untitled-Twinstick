@@ -217,7 +217,7 @@ pub fn player_movement(
         let mut dir = Vec2::ZERO;
         
         if control.get_type() == PlayerType::Local && !control.host {
-            info!("Rollback = {:?}", control.rollback)
+            //info!("Rollback = {:?}", control.rollback)
         }
 
         if control.get_type() == PlayerType::Local && !control.rollback {

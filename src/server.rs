@@ -210,6 +210,7 @@ fn send_player_update(
             for j in p_net.iter() {
 
                 // If a rollback is decided, when you send the packet to that player, send with OP code 3 instead 
+                //INPUT HISTORY ROLLBACK DISABLED WHILE TESTING
                 if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] < 255 && false {
                     let out = j.get_out_packet(3, j.player_id);
                     socket
