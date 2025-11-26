@@ -2,6 +2,7 @@ use crate::{
     GameState, components::FlowMap, components::Health, components::KinematicCollider,
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
     net_control::NetControl, net_control::PlayerType, player_material::PlayerBaseMaterial,
+    collisions::find_mtv, server::InputHistory, server::RollbackDetection,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::math::bounding::IntersectsVolume;
@@ -34,13 +35,24 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 drain_battery.run_if(in_state(GameState::Playing)),
+                
             )
+            .add_systems(
+            Update,
+            player_movement_from_history
+                .run_if(in_state(GameState::Playing))
+                .run_if(rollback_from_history),
+        )
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(
                 Update,
                 player_calculate_flow.run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+fn rollback_from_history(roll: Res<RollbackDetection>) -> bool {
+    return roll.is_rollback;
 }
 
 #[derive(Component)]
@@ -141,6 +153,7 @@ pub fn setup_player(
                 },
             },
             FlowMap::default(),
+            InputHistory::default(),
         ));
     }
 }
@@ -195,14 +208,19 @@ pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     player_net: Query<
-        (&mut Transform, &mut Velocity, &mut NetControl),
+        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider),
         (With<Player>, With<NetControl>),
     >,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
 ) {
-    for (mut transform, mut velocity, mut control) in player_net {
+    for (mut transform, mut velocity, mut control, player_collider) in player_net {
         let mut dir = Vec2::ZERO;
+        
+        if control.get_type() == PlayerType::Local && !control.host {
+            info!("Rollback = {:?}", control.rollback)
+        }
 
-        if control.get_type() == PlayerType::Local {
+        if control.get_type() == PlayerType::Local && !control.rollback {
             if input.pressed(KeyCode::KeyA) {
                 dir.x -= 1.;
             }
@@ -244,14 +262,21 @@ pub fn player_movement(
 
         //REMOTE PLAYER ON REMOTE
         } else {
+
+            if control.get_type() == PlayerType::Local {
+                info!("Roll");
+            }
+            
             transform.translation = control.get_p_pos();
             let rounded_rot_z = control.get_angle();
             transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
+            control.rollback = false;
             continue;
         }
 
         let deltat = time.delta_secs();
         let accel = ACCEL_RATE * deltat;
+        //info!("deltat = {:?}", deltat);
 
         **velocity = if dir.length() > 0. {
             (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
@@ -275,7 +300,25 @@ pub fn player_movement(
         let min = max.clone() * -1.;
 
         let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+
         transform.translation = translate;
+
+        //Collision check
+        for (sc, st) in &statics {
+            let mut transformed_kc_shape = player_collider.shape.clone();
+            transformed_kc_shape.min += transform.translation.truncate();
+            transformed_kc_shape.max += transform.translation.truncate();
+
+            let mut transformed_sc_shape = sc.shape.clone();
+            transformed_sc_shape.min += st.translation.truncate();
+            transformed_sc_shape.max += st.translation.truncate();
+
+            let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+            if colliding {
+                transform.translation = transform.translation
+                    + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+            }
+        }
 
         //Rounds position to integers
         transform.translation.x = transform.translation.x.round();
@@ -285,6 +328,115 @@ pub fn player_movement(
         //Sets position in NetControl
         control.set_pos_x(transform.translation.x);
         control.set_pos_y(transform.translation.y);
+    }
+}
+
+pub fn player_movement_from_history(
+    time: Res<Time>,
+    player_net: Query<
+        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider, &mut InputHistory),
+        (With<Player>, With<NetControl>),
+    >,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    mut roll: ResMut<RollbackDetection>,
+) {
+    for (mut transform, mut velocity, mut control, player_collider, mut hist) in player_net {
+
+        //Check if correct player for rollback
+        if control.player_id == hist.player && hist.usable{
+
+            //Reset player position before rollback
+            transform.translation = hist.last_pos;
+
+            let input_seq;
+
+            if (hist.start > hist.end) {
+                input_seq = (hist.start..=255).chain(0..=hist.end).into_iter();
+            }
+            else {
+                //This is just hist.start..=hist.end, but built with a chain so they could be assigned to the same var for the for loop
+                input_seq = (hist.start..=(hist.start+1)).chain((hist.start+2)..=hist.end);
+            }
+
+            for i in input_seq {
+                let mut dir = Vec2::ZERO;
+
+                if NetControl::pressed_u8(KeyCode::KeyA, hist.complete_history[i as usize]) {
+                    dir.x -= 1.;
+                }
+
+                if NetControl::pressed_u8(KeyCode::KeyD, hist.complete_history[i as usize]) {
+                    dir.x += 1.;
+                }
+
+                if NetControl::pressed_u8(KeyCode::KeyW, hist.complete_history[i as usize]) {
+                    dir.y += 1.;
+                }
+
+                if NetControl::pressed_u8(KeyCode::KeyS, hist.complete_history[i as usize]) {
+                    dir.y -= 1.;
+                }
+
+                let deltat = time.delta_secs();
+                let accel = ACCEL_RATE * deltat;
+                //info!("deltat = {:?}", deltat);
+
+                **velocity = if dir.length() > 0. {
+                    (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+                } else if velocity.length() > accel {
+                    **velocity + (velocity.normalize_or_zero() * -accel)
+                } else {
+                    Vec2::ZERO
+                };
+
+                let change = **velocity * deltat;
+
+                transform.translation += change.extend(0.);
+
+                //keep player in bounds
+                let max = Vec3::new(
+                    WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
+                    WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                    0.,
+                );
+
+                let min = max.clone() * -1.;
+
+                let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+
+                transform.translation = translate;
+
+                //Collision check
+                for (sc, st) in &statics {
+                    let mut transformed_kc_shape = player_collider.shape.clone();
+                    transformed_kc_shape.min += transform.translation.truncate();
+                    transformed_kc_shape.max += transform.translation.truncate();
+
+                    let mut transformed_sc_shape = sc.shape.clone();
+                    transformed_sc_shape.min += st.translation.truncate();
+                    transformed_sc_shape.max += st.translation.truncate();
+
+                    let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+                    if colliding {
+                        transform.translation = transform.translation
+                            + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+                    }
+                }
+
+                //Rounds position to integers
+                transform.translation.x = transform.translation.x.round();
+                transform.translation.y = transform.translation.y.round();
+                //info!("{:?}", transform.translation);
+
+                //Sets position in NetControl
+                control.set_pos_x(transform.translation.x);
+                control.set_pos_y(transform.translation.y);
+            }
+
+            roll.is_rollback = false;
+            control.rollback = false;
+            hist.usable = false;
+        }
     }
 }
 
