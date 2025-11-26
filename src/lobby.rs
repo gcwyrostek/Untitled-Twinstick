@@ -1,5 +1,4 @@
 use crate::GameState;
-use crate::server::inFlag;
 use bevy::prelude::*;
 
 pub struct LobbyPlugin;
@@ -64,9 +63,8 @@ fn wait_for_input(
     mut next_state: ResMut<NextState<GameState>>,
     input: Res<ButtonInput<KeyCode>>,
     lobbyscreen: Single<Entity, With<LobbyScreen>>,
-    mut flag: ResMut<inFlag>,
 ) {
-    if input.pressed(KeyCode::KeyP) || flag.ready {
+    if input.pressed(KeyCode::KeyP) {
         commands.entity(*lobbyscreen).despawn();
         next_state.set(GameState::Playing);
     }
