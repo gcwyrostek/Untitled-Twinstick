@@ -50,7 +50,8 @@ fn check_shadow(pixel_world_pos: vec2<f32>, light_pos: vec3<f32>) -> f32 {
     let ray_dir = normalize(light_pos_2d - pixel_world_pos);
     let total_distance = distance(pixel_world_pos, light_pos_2d);
 
-    // Bias clac 
+    // Start with initial bias
+    var traveled: f32 = 2.0;
     var current_pos = pixel_world_pos + ray_dir * 2.0;
 
     let start_uv = world_to_sdf_uv(current_pos);

@@ -91,6 +91,7 @@ pub fn setup_enemy(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     lights: Res<Lights>,
+    sdf_texture: Res<crate::sdf_shadows::SdfTexture>,
 ) {
     for i in 0..=16 {
         commands.spawn((
@@ -108,7 +109,7 @@ pub fn setup_enemy(
                 lights: lights.lights,
                 normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
                 mesh_rotation: 0.0,
-                sdf_texture: None, // Will be set by update system
+                sdf_texture: Some(sdf_texture.texture.clone()),
             })),
             Transform::from_xyz(600., (i * 100) as f32, 10.).with_scale(Vec3::splat(64.)),
             Velocity::new(),
