@@ -111,11 +111,29 @@ pub fn setup_player(
 
     for i in players {
         let mut model_select;
+        let mut start_pos_x = 0.;
+        let mut start_pos_y = 0.;
         match i.1.player_id {
-            0 => model_select = "player/player_albedo_blue.png",
-            1 => model_select = "player/player_albedo_purple.png",
-            2 => model_select = "player/player_albedo_yellow.png",
-            3 => model_select = "player/player_albedo_orange.png",
+            0 => {
+                model_select = "player/player_albedo_blue.png";
+                start_pos_x = -3200. + (64. * 8.);
+                start_pos_y = 3200. - (64. * 4.);
+            }
+            1 => {
+                model_select = "player/player_albedo_purple.png";
+                start_pos_x = -3200. + (64. * 12.);
+                start_pos_y = 3200. - (64. * 4.);
+            }
+            2 => {
+                model_select = "player/player_albedo_yellow.png";
+                start_pos_x = -3200. + (64. * 8.);
+                start_pos_y = 3200. - (64. * 8.);
+            }
+            3 => {
+                model_select = "player/player_albedo_orange.png";
+                start_pos_x = -3200. + (64. * 12.);
+                start_pos_y = 3200. - (64. * 8.);
+            }
             _ => model_select = "player/player_albedo.png",
         }
         commands.entity(i.0).insert((
@@ -140,7 +158,7 @@ pub fn setup_player(
                 normal: Some(asset_server.load("player/player_normal.png")),
                 mesh_rotation: 0.0,
             })),
-            Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
+            Transform::from_xyz(start_pos_x, start_pos_y, 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
             // you can have a smaller player with 32 and larger player with 128
             Velocity::new(),
             FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
@@ -292,8 +310,8 @@ pub fn player_movement(
 
         //keep player in bounds
         let max = Vec3::new(
-            WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
-            WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+            100. * 64. / 2. - PLAYER_SIZE / 2.,
+            100. * 64. / 2. - PLAYER_SIZE / 2.,
             0.,
         );
 
