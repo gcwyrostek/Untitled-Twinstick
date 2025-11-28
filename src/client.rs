@@ -1,8 +1,11 @@
 use crate::{
-    AssignedType, GameState, LogicType, local_control::LocalControl, net_control::NetControl,
-    net_control::PlayerType, player::Player,
+    AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType, net_control::Local, net_control::Network,
+    player::Player,
+    collectible::PlayerInventory,
 };
 use bevy::prelude::*;
+use bevy::time::Stopwatch;
+use std::time::Duration;
 use std::net::UdpSocket;
 
 const IP_CONST: &str = "127.0.0.1:";
@@ -59,6 +62,7 @@ fn client_init(mut commands: Commands) {
     commands.insert_resource(SocketResource {
         socket: UdpSocket::bind(newIP).expect("ERROR"),
     });
+    commands.insert_resource(ClientMetrics::default());
 }
 
 fn client_start(socket: ResMut<SocketResource>) {
@@ -71,70 +75,100 @@ fn client_close(mut commands: Commands) {
     commands.remove_resource::<SocketResource>();
 }
 
-fn client_connect(socket: ResMut<SocketResource>) {
-    info!("In client connect");
+fn client_connect(
+    socket: ResMut<SocketResource>,
+    mut cm: ResMut<ClientMetrics>,
+) {
+    info!("In client connect, Starting Timer");
     let mut buf = [0];
+    cm.sw.tick(Duration::from_millis(1));
+    cm.sw.reset();
     socket
         .socket
         .send_to(&[255], "127.0.0.1:2525")
         .expect("couldn't send data");
-    match socket.socket.recv_from(&mut buf) {
-        Ok((amt, src)) => {
-            info!("{:?} + {:?} + {:?}", amt, src, buf);
-        }
-        Err(e) => {
-            //info!("{:?}", e);
-        }
-    }
 }
 
 fn client_run(
     mut commands: Commands,
+    input: Res<ButtonInput<KeyCode>>,
     socket: ResMut<'_, SocketResource>,
-    mut p_loc: Query<&mut LocalControl, With<LocalControl>>,
+    mut p_loc: Query<(&mut NetControl, &mut Transform), With<NetControl>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut cm: ResMut<ClientMetrics>,
 ) {
-    let mut buf = [0; 10];
-    /*socket
-    .socket
-    .send_to(&[9; 10], "127.0.0.1:2525")
-    .expect("couldn't send data");*/
-    for i in 1..4 {
-        match socket.socket.recv_from(&mut buf) {
-            Ok((amt, src)) => {
-                //info!("{:?} + {:?} + {:?}", amt, src, buf);
-                match buf[0] {
-                    //Code 0 -> Game Started. Send player counts for LocalControl initialization.
-                    0 => {
-                        for i in 0..buf[1] {
-                            if i == buf[2] {
-                                commands.spawn(LocalControl::new(PlayerType::Local, i));
-                                info!("I am player: {}", i);
-                            } else {
-                                commands.spawn(LocalControl::new(PlayerType::Network, i));
-                                info!("Created net player: {}", i);
+    let mut buf = [0; 11];
+    //Fake packet loss option
+    if !input.pressed(KeyCode::KeyP) {
+        for l in 1..8 {
+            match socket.socket.recv_from(&mut buf) {
+                Ok((amt, src)) => {
+                    //info!("{:?} + {:?} + {:?}", amt, src, buf);
+                    match buf[0] {
+                        //Code 0 -> Game Started. Send player counts for NetControl initialization.
+                        0 => {
+                            for i in 0..buf[1] {
+                                if i == buf[2] {
+                                    commands.spawn(
+                                        (NetControl::new(false, PlayerType::Local, i, None),
+                                        Local,
+                                    )
+                                );
+                                    info!("I am player: {}", i);
+                                } else {
+                                    commands.spawn((NetControl::new(
+                                        false,
+                                        PlayerType::Network,
+                                        i,
+                                        None,
+                                    ),
+                                    Network,
+                                    )
+                                );
+                                    info!("Created net player: {}", i);
+                                }
                             }
+                            //Start the game
+                            info!("PLAY STATE");
+                            next_state.set(GameState::Playing);
                         }
-                        //Start the game
-                        info!("PLAY STATE");
-                        next_state.set(GameState::Playing);
-                    }
 
-                    //Code 1 -> Player position update.
-                    1 => {
-                        for mut i in p_loc.iter_mut() {
-                            if i.player_id == buf[1] {
-                                i.set_p_pos(buf);
+                        //Code 1 -> Player position/angle update.
+                        1 => {
+                            cm.rtt = cm.sw.elapsed();
+                            //info!("Ping: {:?}", cm.rtt);
+                            for (mut control, mut trans) in p_loc.iter_mut() {
+                                //The first check hard limits us to 4 players (pid 0 to 3) as I started packing shooting into the same byte.
+                                //The second check prevents server from overwriting active player info. Will need to add 'else' to handle rollback system
+                                if control.player_id == (buf[1] & 3) && control.player_type == PlayerType::Network {
+                                    control.set_player_state(buf);
+                                //Sends the updated info except angle, used for rollback
+                                } else if control.player_id == (buf[1] & 3) && control.player_type == PlayerType::Local {
+                                    //info!("{:08b}", buf[1]);
+                                    control.set_player_state_limited(buf);
+                                }
                             }
                         }
-                    }
-                    _ => {
-                        info!("{:?} + {:?} + {:?}", amt, src, buf);
+                        //Code 2 -> Clock Sync
+                        2 => {
+                            cm.rtt = cm.sw.elapsed();
+                            //info!("Ping: {:?}", cm.rtt);
+                        }
+
+                        //Request input history
+                        3 => {
+                            cm.send_history = true;
+                        }
+
+                        _ => {
+                            info!("{:?} + {:?} + {:?}", amt, src, buf);
+                        }
+                        
                     }
                 }
-            }
-            Err(e) => {
-                //info!("ERROR");
+                Err(e) => {
+                    //info!("ERROR");
+                }
             }
         }
     }
@@ -145,36 +179,70 @@ pub fn input_converter(
     input: Res<ButtonInput<KeyCode>>,
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
-) {
-    let mut input_result: u8 = 0;
-    //WASDL
-    if input.pressed(KeyCode::KeyW) {
-        input_result += 128;
-    }
+    mut pl_cont: Query<&mut NetControl, (With<NetControl>, With<Local>)>,
+    mut inventory: ResMut<PlayerInventory>,
+    mut cm: ResMut<ClientMetrics>,
+)   {
+        let mut input_result: u8 = 0;
+        let mut player = pl_cont.single_mut().unwrap();
+        //WASD00L0
+        if input.pressed(KeyCode::KeyW) {
+            input_result += 128;
+        }
 
-    if input.pressed(KeyCode::KeyA) {
-        input_result += 64;
-    }
+        if input.pressed(KeyCode::KeyA) {
+            input_result += 64;
+        }
 
-    if input.pressed(KeyCode::KeyS) {
-        input_result += 32;
-    }
+        if input.pressed(KeyCode::KeyS) {
+            input_result += 32;
+        }
 
-    if input.pressed(KeyCode::KeyD) {
-        input_result += 16;
-    }
+        if input.pressed(KeyCode::KeyD) {
+            input_result += 16;
+        }
 
-    if mouse_button_io.pressed(MouseButton::Left) {
-        input_result += 2;
-    }
+        //Ideally we would still send the click signal always, but this is easier if we aren't sending ammo info
+        if mouse_button_io.pressed(MouseButton::Left) && inventory.has_available_ammo() {
+            input_result += 2;
+        }
 
-    //UPDATE THIS AFTER YOUR GET NET CONTROL FOR CLIENT
-    let angle_result: u8 = 0;
+        cm.sw.reset();
 
-    socket
-        .socket
-        .send_to(&[input_result, angle_result], "127.0.0.1:2525")
-        .expect("couldn't send data");
+        let seq = cm.seq_num;
+        cm.input_history[seq as usize] = input_result;
+        /*//Save Input
+        cm.input_history[seq as usize] = [input_result, player.net_angle, up_seq, low_seq];
+        if input.pressed(KeyCode::KeyO) {
+            info!("{:?}", cm.input_history);
+        }*/
+
+        //Fake packet loss option
+        if !input.pressed(KeyCode::KeyP) {
+
+        if !cm.send_history {
+            //Send Input
+            socket
+                .socket
+                .send_to(&[input_result, player.net_angle, cm.seq_num], "127.0.0.1:2525")
+                .expect("couldn't send data");
+
+            } else {
+            cm.send_history = false;
+            cm.input_history[256] = seq;
+            socket
+                .socket
+                .send_to(&cm.input_history, "127.0.0.1:2525")
+                .expect("couldn't send data");
+            }
+        }
+        //info!("seq = {}", cm.seq_num);
+        if cm.seq_num == 255 {
+            cm.seq_num = 0;
+        } else {
+            cm.seq_num += 1;
+        }
+
     //info!("WASD");
     //info!("{:08b}", input_result);
 
@@ -185,4 +253,29 @@ pub fn input_converter(
     for i in mouse_button_io.get_pressed(){
         info!("(MOUSE) {:?} is pressed.", i);
     }*/
+}
+
+#[derive(Resource)]
+pub struct ClientMetrics {
+    pub seq_num: u8,
+    pub sw: Stopwatch,
+    pub rtt: Duration,
+    pub input_history: [u8;257],
+
+    pub send_history: bool,
+}
+impl Default for ClientMetrics {
+    fn default() -> Self {
+        Self {
+           seq_num: 0,
+           sw: Stopwatch::new(),
+           rtt: Duration::ZERO,
+           input_history: [0;257],
+
+           send_history: false,
+        }
+    }
+}
+impl ClientMetrics {
+
 }

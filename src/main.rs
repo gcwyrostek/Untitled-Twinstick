@@ -1,4 +1,8 @@
+//Hides the warnings that we were collectively ignoring
+#![allow(warnings)]
+
 use crate::pickup_system::PickupPlugin;
+use crate::server::RollbackDetection;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{
     prelude::*,
@@ -24,6 +28,7 @@ mod sdf_shadows;
 mod server;
 mod tiling;
 mod ui;
+mod inventory_ui;
 mod wall;
 //mod reticle;
 //mod ground_tiles;
@@ -33,7 +38,6 @@ mod wall;
 mod collisions;
 mod game_over;
 mod lobby;
-mod local_control;
 mod net_control;
 mod slideshow;
 
@@ -104,6 +108,7 @@ fn main() {
         .insert_resource(LogicType {
             l_type: AssignedType::No,
         })
+        .insert_resource(RollbackDetection::default())
         // Core game systems
         //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)
         .add_systems(Startup, setup_cursor_icon)

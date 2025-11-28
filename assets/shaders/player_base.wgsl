@@ -116,7 +116,11 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     var specular: f32 = 0.0;
     let view_direction = vec3<f32>(0.0, 0.0, 1.0);
     for (var i: i32 = 0; i < NUM_LIGHTS; i += 1) {
-        let pixel_to_light = normalize(lights[i].position - vec3<f32>(mesh.world_position.x, mesh.world_position.y, mesh.world_position.z));
+        let pixel_to_light_vec = lights[i].position - vec3<f32>(mesh.world_position.x, mesh.world_position.y, mesh.world_position.z);
+        let distance = length(pixel_to_light_vec);
+        let pixel_to_light = normalize(pixel_to_light_vec);
+        let attenuation = clamp(1.0 - distance / lights[i].range, 0.0, 1.0);
+
         // is a coner light
         if (lights[i].cone != 0) {
             var cone_angle_half = f32(lights[i].cone) / 2.0 * 3.14159265359 / 180.0;
@@ -132,10 +136,10 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
         // Check for shadows using SDF
         let shadow = check_shadow(vec2<f32>(mesh.world_position.x, mesh.world_position.y), lights[i].position);
 
-        diffuse += shadow * lighting.diffuse_reflection_coefficient * lights[i].intensity * max(0.0, dot(rotated_normal, pixel_to_light));
+        diffuse += shadow * lighting.diffuse_reflection_coefficient * lights[i].intensity * max(0.0, dot(rotated_normal, pixel_to_light)) * attenuation;
 
         let reflection = reflect(-pixel_to_light, rotated_normal);
-        specular += shadow * 1.0 * lights[i].intensity * pow(max(dot(view_direction, reflection), 0.0), lighting.shininess);
+        specular += shadow * 1.0 * lights[i].intensity * pow(max(dot(view_direction, reflection), 0.0), lighting.shininess) * attenuation;
     }
 
     let final_color = vec4<f32>(base_color.rgb * (ambient + diffuse + specular), base_color.a);

@@ -1,4 +1,4 @@
-use crate::{components::KinematicCollider, components::StaticCollider, GameState};
+use crate::{GameState, components::KinematicCollider, components::StaticCollider, player::Player,};
 use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 pub struct CollisionsPlugin;
@@ -8,7 +8,7 @@ impl Plugin for CollisionsPlugin {
     }
 }
 
-fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
+pub fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
     let a_min = pushee.min;
     let a_max = pushee.max;
     let b_min = pusher.min;
@@ -41,7 +41,7 @@ fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
 
 pub fn do_collisions(
     kinematics: Query<(&KinematicCollider, &mut Transform), Without<StaticCollider>>,
-    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Player>)>,
 ) {
     for (kc, mut kt) in kinematics {
         for (sc, st) in &statics {

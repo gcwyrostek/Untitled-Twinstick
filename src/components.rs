@@ -1,5 +1,6 @@
 use bevy::{math::bounding::Aabb2d, prelude::*, render::render_resource::ShaderType};
 use std::collections::HashMap;
+use bevy::reflect::Reflect;
 
 #[derive(Component)]
 pub struct Health {
@@ -78,7 +79,7 @@ pub struct KinematicCollider {
 }
 
 // Stores a light source. Info is sent to shader.
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, Reflect)]
 pub struct LightSource {
     pub position: Vec3,
     pub intensity: f32,

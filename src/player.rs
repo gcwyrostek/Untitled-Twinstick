@@ -1,9 +1,8 @@
-use crate::light_manager::Lights;
 use crate::{
-    components::FlowMap, components::Health, components::KinematicCollider,
+    GameState, components::FlowMap, components::Health, components::KinematicCollider,
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
-    local_control::LocalControl, net_control::NetControl, net_control::PlayerType,
-    player_material::PlayerBaseMaterial, GameState,
+    net_control::NetControl, net_control::PlayerType, player_material::PlayerBaseMaterial,
+    collisions::find_mtv, server::InputHistory, server::RollbackDetection,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::math::bounding::IntersectsVolume;
@@ -11,6 +10,8 @@ use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
+use crate::light_manager::Lights;
+use crate::collectible::PlayerInventory;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::f32::consts;
@@ -31,6 +32,17 @@ impl Plugin for PlayerPlugin {
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
             )
+            .add_systems(
+                Update,
+                drain_battery.run_if(in_state(GameState::Playing)),
+                
+            )
+            .add_systems(
+            Update,
+            player_movement_from_history
+                .run_if(in_state(GameState::Playing))
+                .run_if(rollback_from_history),
+        )
             .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(
                 Update,
@@ -39,8 +51,24 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+fn rollback_from_history(roll: Res<RollbackDetection>) -> bool {
+    return roll.is_rollback;
+}
+
 #[derive(Component)]
-pub struct Player;
+pub struct Player {
+    pub charge: i32,
+    pub flashlight: Option<Entity>,
+}
+
+impl Player {
+    pub fn charge_battery(&mut self, value: i32) {
+        self.charge += value;
+        if self.charge >= 500 {
+            self.charge = 500;
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct FireCooldown(Timer);
@@ -74,7 +102,7 @@ pub fn setup_player(
     asset_server: Res<AssetServer>,
     // query: Query<Entity, With<Camera>>,
     query: Query<Entity, With<Camera>>,
-    players: Query<Entity, Or<(With<NetControl>, With<LocalControl>)>>,
+    players: Query<(Entity, &mut NetControl), With<NetControl>>,
     lights: Res<Lights>,
     sdf_texture: Res<crate::sdf_shadows::SdfTexture>,
 ) {
@@ -83,14 +111,40 @@ pub fn setup_player(
     // }
 
     for i in players {
-        commands.entity(i).insert((
+        let mut model_select;
+        let mut start_pos_x = 0.;
+        let mut start_pos_y = 0.;
+        match i.1.player_id {
+            0 => {
+                model_select = "player/player_albedo_blue.png";
+                start_pos_x = -3200. + (64. * 8.);
+                start_pos_y = 3200. - (64. * 4.);
+            }
+            1 => {
+                model_select = "player/player_albedo_purple.png";
+                start_pos_x = -3200. + (64. * 12.);
+                start_pos_y = 3200. - (64. * 4.);
+            }
+            2 => {
+                model_select = "player/player_albedo_yellow.png";
+                start_pos_x = -3200. + (64. * 8.);
+                start_pos_y = 3200. - (64. * 8.);
+            }
+            3 => {
+                model_select = "player/player_albedo_orange.png";
+                start_pos_x = -3200. + (64. * 12.);
+                start_pos_y = 3200. - (64. * 8.);
+            }
+            _ => model_select = "player/player_albedo.png",
+        }
+        commands.entity(i.0).insert((
             // For any entities that we want to have lighting,
             // add the following two components.
             Mesh2d(meshes.add(Rectangle::default())),
             MeshMaterial2d(materials.add(PlayerBaseMaterial {
                 // Generally, only change what's inside the 'lighting' struct and the 'texture' and 'normal' parameters.
                 color: LinearRgba::BLUE,
-                texture: Some(asset_server.load("player/player_albedo.png")),
+                texture: Some(asset_server.load(model_select)),
                 lighting: crate::player_material::Lighting {
                     // 'ambient_reflection_coefficient' and 'ambient_light_intensity' do the same thing.
                     // Should be 0 for everything except the player.
@@ -106,13 +160,12 @@ pub fn setup_player(
                 mesh_rotation: 0.0,
                 sdf_texture: Some(sdf_texture.texture.clone()),
             })),
-            Transform::from_xyz(0., 0., 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
+            Transform::from_xyz(start_pos_x, start_pos_y, 0.).with_scale(Vec3::splat(128.)), // Change size of player here: current size: 64. (makes player 64x larger)
             // you can have a smaller player with 32 and larger player with 128
             Velocity::new(),
             FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
-            Player,
+            Player { charge: 500, flashlight: None },
             Health::new(MAX_HEALTH),
-            //NetControl::new(PlayerType::Local, 0),
             KinematicCollider {
                 shape: Aabb2d {
                     min: Vec2 { x: 0., y: 0. },
@@ -120,6 +173,7 @@ pub fn setup_player(
                 },
             },
             FlowMap::default(),
+            InputHistory::default(),
         ));
     }
 }
@@ -174,112 +228,178 @@ pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     player_net: Query<
-        (&mut Transform, &mut Velocity, &mut NetControl),
-        (With<Player>, With<NetControl>, Without<LocalControl>),
+        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider),
+        (With<Player>, With<NetControl>),
     >,
-    player_local: Query<
-        (&mut Transform, &mut Velocity, &mut LocalControl),
-        (With<Player>, With<LocalControl>, Without<NetControl>),
-    >,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
 ) {
-    //This is pretty ugly. If we could condense it, that would be great, but I couldn't figure it out at the time.
-    if player_net.iter().count() > player_local.iter().count() {
-        for (mut transform, mut velocity, mut control) in player_net {
-            let mut dir = Vec2::ZERO;
+    for (mut transform, mut velocity, mut control, player_collider) in player_net {
+        let mut dir = Vec2::ZERO;
+        
+        if control.get_type() == PlayerType::Local && !control.host {
+            //info!("Rollback = {:?}", control.rollback)
+        }
 
-            if control.get_type() == PlayerType::Local {
-                if input.pressed(KeyCode::KeyA) {
-                    dir.x -= 1.;
-                }
-
-                if input.pressed(KeyCode::KeyD) {
-                    dir.x += 1.;
-                }
-
-                if input.pressed(KeyCode::KeyW) {
-                    dir.y += 1.;
-                }
-
-                if input.pressed(KeyCode::KeyS) {
-                    dir.y -= 1.;
-                }
-            } else {
-                if control.pressed(KeyCode::KeyA) {
-                    dir.x -= 1.;
-                }
-
-                if control.pressed(KeyCode::KeyD) {
-                    dir.x += 1.;
-                }
-
-                if control.pressed(KeyCode::KeyW) {
-                    dir.y += 1.;
-                }
-
-                if control.pressed(KeyCode::KeyS) {
-                    dir.y -= 1.;
-                }
+        if control.get_type() == PlayerType::Local && !control.rollback {
+            if input.pressed(KeyCode::KeyA) {
+                dir.x -= 1.;
             }
 
-            let deltat = time.delta_secs();
-            let accel = ACCEL_RATE * deltat;
+            if input.pressed(KeyCode::KeyD) {
+                dir.x += 1.;
+            }
 
-            **velocity = if dir.length() > 0. {
-                (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
-            } else if velocity.length() > accel {
-                **velocity + (velocity.normalize_or_zero() * -accel)
-            } else {
-                Vec2::ZERO
-            };
+            if input.pressed(KeyCode::KeyW) {
+                dir.y += 1.;
+            }
 
-            let change = **velocity * deltat;
+            if input.pressed(KeyCode::KeyS) {
+                dir.y -= 1.;
+            }
 
-            transform.translation += change.extend(0.);
+        //REMOTE PLAYER INPUTS ON HOST
+        } else if control.host {
+            if control.pressed(KeyCode::KeyA) {
+                dir.x -= 1.;
+            }
 
-            //keep player in bounds
-            let max = Vec3::new(
-                WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
-                WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
-                0.,
-            );
+            if control.pressed(KeyCode::KeyD) {
+                dir.x += 1.;
+            }
 
-            let min = max.clone() * -1.;
+            if control.pressed(KeyCode::KeyW) {
+                dir.y += 1.;
+            }
 
-            let translate = (transform.translation + change.extend(0.)).clamp(min, max);
-            transform.translation = translate;
+            if control.pressed(KeyCode::KeyS) {
+                dir.y -= 1.;
+            }
 
-            //Rounds position to integers
-            transform.translation.x = transform.translation.x.round();
-            transform.translation.y = transform.translation.y.round();
-            //info!("{:?}", transform.translation);
+            //REMOTE PLAYER ANGLE ON HOST
+            let rounded_rot_z = control.get_angle();
+            //info!("Player {}: {:?}", control.player_id, rounded_rot_z);
+            transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
 
-            //Sets position in NetControl
-            control.set_pos_x(transform.translation.x);
-            control.set_pos_y(transform.translation.y);
-        }
-    } else {
-        for (mut transform, mut velocity, mut control) in player_local {
-            let mut dir = Vec2::ZERO;
+        //REMOTE PLAYER ON REMOTE
+        } else {
 
             if control.get_type() == PlayerType::Local {
-                if input.pressed(KeyCode::KeyA) {
+                info!("Roll");
+            }
+            
+            transform.translation = control.get_p_pos();
+            let rounded_rot_z = control.get_angle();
+            transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
+            control.rollback = false;
+            continue;
+        }
+
+        let deltat = time.delta_secs();
+        let accel = ACCEL_RATE * deltat;
+        //info!("deltat = {:?}", deltat);
+
+        **velocity = if dir.length() > 0. {
+            (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
+        } else if velocity.length() > accel {
+            **velocity + (velocity.normalize_or_zero() * -accel)
+        } else {
+            Vec2::ZERO
+        };
+
+        let change = **velocity * deltat;
+
+        transform.translation += change.extend(0.);
+
+        //keep player in bounds
+        let max = Vec3::new(
+            100. * 64. / 2. - PLAYER_SIZE / 2.,
+            100. * 64. / 2. - PLAYER_SIZE / 2.,
+            0.,
+        );
+
+        let min = max.clone() * -1.;
+
+        let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+
+        transform.translation = translate;
+
+        //Collision check
+        for (sc, st) in &statics {
+            let mut transformed_kc_shape = player_collider.shape.clone();
+            transformed_kc_shape.min += transform.translation.truncate();
+            transformed_kc_shape.max += transform.translation.truncate();
+
+            let mut transformed_sc_shape = sc.shape.clone();
+            transformed_sc_shape.min += st.translation.truncate();
+            transformed_sc_shape.max += st.translation.truncate();
+
+            let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+            if colliding {
+                transform.translation = transform.translation
+                    + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+            }
+        }
+
+        //Rounds position to integers
+        transform.translation.x = transform.translation.x.round();
+        transform.translation.y = transform.translation.y.round();
+        //info!("{:?}", transform.translation);
+
+        //Sets position in NetControl
+        control.set_pos_x(transform.translation.x);
+        control.set_pos_y(transform.translation.y);
+    }
+}
+
+pub fn player_movement_from_history(
+    time: Res<Time>,
+    player_net: Query<
+        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider, &mut InputHistory),
+        (With<Player>, With<NetControl>),
+    >,
+    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    mut roll: ResMut<RollbackDetection>,
+) {
+    for (mut transform, mut velocity, mut control, player_collider, mut hist) in player_net {
+
+        //Check if correct player for rollback
+        if control.player_id == hist.player && hist.usable{
+
+            //Reset player position before rollback
+            transform.translation = hist.last_pos;
+
+            let input_seq;
+
+            if (hist.start > hist.end) {
+                input_seq = (hist.start..=255).chain(0..=hist.end).into_iter();
+            }
+            else {
+                //This is just hist.start..=hist.end, but built with a chain so they could be assigned to the same var for the for loop
+                input_seq = (hist.start..=(hist.start+1)).chain((hist.start+2)..=hist.end);
+            }
+
+            for i in input_seq {
+                let mut dir = Vec2::ZERO;
+
+                if NetControl::pressed_u8(KeyCode::KeyA, hist.complete_history[i as usize]) {
                     dir.x -= 1.;
                 }
 
-                if input.pressed(KeyCode::KeyD) {
+                if NetControl::pressed_u8(KeyCode::KeyD, hist.complete_history[i as usize]) {
                     dir.x += 1.;
                 }
 
-                if input.pressed(KeyCode::KeyW) {
+                if NetControl::pressed_u8(KeyCode::KeyW, hist.complete_history[i as usize]) {
                     dir.y += 1.;
                 }
 
-                if input.pressed(KeyCode::KeyS) {
+                if NetControl::pressed_u8(KeyCode::KeyS, hist.complete_history[i as usize]) {
                     dir.y -= 1.;
                 }
 
                 let deltat = time.delta_secs();
                 let accel = ACCEL_RATE * deltat;
+                //info!("deltat = {:?}", deltat);
 
                 **velocity = if dir.length() > 0. {
                     (**velocity + (dir.normalize_or_zero() * accel)).clamp_length_max(PLAYER_SPEED)
@@ -303,27 +423,51 @@ pub fn player_movement(
                 let min = max.clone() * -1.;
 
                 let translate = (transform.translation + change.extend(0.)).clamp(min, max);
+
                 transform.translation = translate;
+
+                //Collision check
+                for (sc, st) in &statics {
+                    let mut transformed_kc_shape = player_collider.shape.clone();
+                    transformed_kc_shape.min += transform.translation.truncate();
+                    transformed_kc_shape.max += transform.translation.truncate();
+
+                    let mut transformed_sc_shape = sc.shape.clone();
+                    transformed_sc_shape.min += st.translation.truncate();
+                    transformed_sc_shape.max += st.translation.truncate();
+
+                    let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+                    if colliding {
+                        transform.translation = transform.translation
+                            + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+                    }
+                }
 
                 //Rounds position to integers
                 transform.translation.x = transform.translation.x.round();
                 transform.translation.y = transform.translation.y.round();
                 //info!("{:?}", transform.translation);
-            } else {
-                transform.translation = control.get_p_pos();
+
+                //Sets position in NetControl
+                control.set_pos_x(transform.translation.x);
+                control.set_pos_y(transform.translation.y);
             }
+
+            roll.is_rollback = false;
+            control.rollback = false;
+            hist.usable = false;
         }
     }
 }
 
 pub fn player_orientation(
-    mut players: Query<
+    mut player_net: Query<
         (
             &mut MeshMaterial2d<PlayerBaseMaterial>,
             &mut Transform,
             &mut NetControl,
         ),
-        With<Player>,
+        (With<Player>, With<NetControl>),
     >,
     windows: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
@@ -341,7 +485,7 @@ pub fn player_orientation(
         if let Ok(cursor_world_position) =
             camera.viewport_to_world_2d(camera_transform, cursor_position)
         {
-            for (mut material, mut player_transform, mut netcontrol) in players.iter_mut() {
+            for (mut material, mut player_transform, mut netcontrol) in player_net.iter_mut() {
                 let mut rounded_rot_z = 0.;
 
                 if netcontrol.player_type == PlayerType::Local {
@@ -352,14 +496,34 @@ pub fn player_orientation(
                         let rotation_z = direction.y.atan2(direction.x);
                         //Rounding is needed to prevent precision errors when networking
                         rounded_rot_z = (rotation_z * 10.).round() / 10.;
+                        //info!("PL_ROT Player {}: {:?}", netcontrol.player_id, rounded_rot_z);
                         netcontrol.set_angle(rounded_rot_z);
                     }
-                } else if netcontrol.player_type == PlayerType::Network {
-                    rounded_rot_z = netcontrol.get_angle();
+                    player_transform.rotation =
+                        Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
                 }
-
-                player_transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
             }
+
+            /*  else
+            {
+                for (mut material, mut player_transform, mut localcontrol) in player_local.iter_mut() {
+
+                    let mut rounded_rot_z = 0.;
+
+                    if localcontrol.player_type == PlayerType::Local {
+                        let player_position = player_transform.translation.truncate();
+                        let direction = cursor_world_position - player_position;
+
+                        if direction.length() > 0.0 {
+                            let rotation_z = direction.y.atan2(direction.x);
+                            //Rounding is needed to prevent precision errors when networking
+                            rounded_rot_z = (rotation_z * 10.).round()/10.;
+                            localcontrol.set_angle(rounded_rot_z);
+                        }
+                    }
+                    player_transform.rotation = Quat::from_rotation_z(rounded_rot_z - consts::PI / 2.);
+                }
+            }*/
         }
     }
 }
@@ -378,6 +542,49 @@ pub fn player_damage(
                     next_state.set(GameState::GameOver);
                     commands.entity(player).despawn();
                 }
+            }
+        }
+    }
+}
+
+pub fn drain_battery(
+    time: Res<Time>,
+    mut players: Query<&mut Player>,
+    mut lights: Query<&mut LightSource>,
+) {
+    let delta = time.delta_secs();
+    let max_range = 500.0;
+    let min_range = 50.0;
+
+    for mut player in players.iter_mut() {
+        // Drain battery
+        let drain_rate = 0.5;
+        if player.charge <= 0 {
+            //instant_kill();
+            // kill them
+        }
+        player.charge = (player.charge as f32 - drain_rate * delta).max(0.0) as i32;
+
+        // Update flashlight range.
+        if let Some(flashlight_entity) = player.flashlight {
+            if let Ok(mut light) = lights.get_mut(flashlight_entity) {
+                light.range = min_range + (max_range - min_range) * (player.charge as f32 / 500.0);
+            }
+        }
+    }
+}
+
+pub fn use_revive_kit(
+    input: Res<ButtonInput<KeyCode>>,
+    mut inventory: ResMut<PlayerInventory>,
+    mut players: Query<(Entity, &mut Health), With<Player>>,
+) {
+    if input.just_pressed(KeyCode::KeyR) {
+        for (player_entity, mut player_health) in players.iter_mut() {
+            if player_health.is_dead() && inventory.revive_kits > 0 {
+                inventory.revive_kits -= 1;
+                player_health.current = player_health.max;
+                info!("Used a revive kit on player {:?}! Health restored.", player_entity);
             }
         }
     }

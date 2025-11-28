@@ -1,4 +1,5 @@
 use crate::{
+    collectible::{consume_ammo, PlayerInventory},
     GameState, net_control::NetControl, net_control::PlayerType, player::FireCooldown,
     player::Player,
 };
@@ -51,20 +52,48 @@ pub fn projectile_inputs(
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut player_q: Query<(&Transform, &mut FireCooldown, &NetControl), With<Player>>,
+    mut player_q: Query<(&Transform, &mut FireCooldown, &mut NetControl), With<Player>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
     mut pos_history: ResMut<MouseMemory>,
+    mut inventory: ResMut<PlayerInventory>,
 ) {
-    let not_shooting = !mouse_button_io.pressed(MouseButton::Left);
+    let shooting = mouse_button_io.pressed(MouseButton::Left);
 
-    for (transform, mut cooldown, netcontrol) in player_q {
+    for (transform, mut cooldown, mut netcontrol) in player_q {
         let projectile_pos = transform.translation;
         let dir = transform.rotation.mul_vec3(Vec3::Y).truncate();
 
-        if !not_shooting
+        //Local Shooting
+        if shooting && cooldown.tick(time.delta()) && netcontrol.get_type() == PlayerType::Local {
+            if inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
+                commands.spawn((
+                    Sprite::from_image(asset_server.load("textures/bullet.png")),
+                    Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
+                    Velocity {
+                        velocity: dir * PROJECTILE_SPEED,
+                    },
+                    Projectile,
+                ));
+                //Host Shooting
+                if netcontrol.host {
+                    netcontrol.net_input = 2;
+                }
+            } else if netcontrol.host {
+                netcontrol.net_input = 0;
+            }
+        }
+        //Local NOT Shooting
+        else if !shooting && netcontrol.get_type() == PlayerType::Local {
+            //Host NOT Shooting
+            if netcontrol.host {
+                netcontrol.net_input = 0;
+            }
+        }
+        //Networked player on Host
+        else if netcontrol.clicked(MouseButton::Left)
             && cooldown.tick(time.delta())
-            && netcontrol.get_type() == PlayerType::Local
+            && netcontrol.get_type() == PlayerType::Network
         {
             commands.spawn((
                 Sprite::from_image(asset_server.load("textures/bullet.png")),
@@ -75,8 +104,8 @@ pub fn projectile_inputs(
                 Projectile,
             ));
         }
-        //THIS IS CURRENTLY BASED ON THE LOCAL PLAYER'S LAST MOUSE POSITION
-        else if netcontrol.clicked(MouseButton::Left)
+        //Networked player on Network
+        else if netcontrol.p_shot
             && cooldown.tick(time.delta())
             && netcontrol.get_type() == PlayerType::Network
         {

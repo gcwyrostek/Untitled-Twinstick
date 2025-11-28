@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::{GameState, net_control::NetControl, net_control::PlayerType};
 use crate::player::Player;
 use bevy::prelude::*;
 
@@ -35,50 +35,63 @@ fn cleanup_game_camera(mut commands: Commands, query: Query<Entity, With<GameCam
 fn camera_follow(
     windows: Query<&Window>,
     map: Res<MapBounds>,
-    player_q: Query<&Transform, With<Player>>,
+    player_q: Query<(&Transform, &mut NetControl), With<Player>>,
     mut cam_q: Query<&mut Transform, (With<Camera2d>, With<GameCamera>, Without<Player>)>,
-) {
-    let Ok(player_tf) = player_q.single() else {
-        return;
-    };
-
-    let Ok(mut cam_tf) = cam_q.single_mut() else {
-        return;
-    };
-
-    let window = match windows.iter().next() {
-        Some(w) => w,
-        None => return,
-    };
-
-    let half_w = window.width() * 0.5;
-    let half_h = window.height() * 0.5;
-
-    // Start with player position as target
-    let mut target_x = player_tf.translation.x;
-    let mut target_y = player_tf.translation.y;
-
-    let map_half_w = map.width * 0.5;
-    let map_half_h = map.height * 0.5;
-
-    // Clamp
-    if map.width <= half_w * 2.0 {
-        target_x = 0.0;
-    } else {
-        let min_x = -map_half_w + half_w;
-        let max_x = map_half_w - half_w;
-        target_x = target_x.clamp(min_x, max_x);
+)  {
+       
+    //This gets the transform of the local player
+    let mut temp_tf = None;
+    for (trans, control) in player_q {
+        if control.player_type == PlayerType::Local {
+            temp_tf = Some(trans);
+        }
     }
+    
+    if temp_tf == None {
+        return;
+    } 
+    else {
 
-    if map.height <= half_h * 2.0 {
-        target_y = 0.0;
-    } else {
-        let min_y = -map_half_h + half_h;
-        let max_y = map_half_h - half_h;
-        target_y = target_y.clamp(min_y, max_y);
+        let player_tf = temp_tf.unwrap();
+
+        let Ok(mut cam_tf) = cam_q.single_mut() else {
+            return;
+        };
+
+        let window = match windows.iter().next() {
+            Some(w) => w,
+            None => return,
+        };
+
+        let half_w = window.width() * 0.5;
+        let half_h = window.height() * 0.5;
+
+        // Start with player position as target
+        let mut target_x = player_tf.translation.x;
+        let mut target_y = player_tf.translation.y;
+
+        let map_half_w = map.width * 0.5;
+        let map_half_h = map.height * 0.5;
+
+        // Clamp
+        if map.width <= half_w * 2.0 {
+            target_x = 0.0;
+        } else {
+            let min_x = -map_half_w + half_w;
+            let max_x = map_half_w - half_w;
+            target_x = target_x.clamp(min_x, max_x);
+        }
+
+        if map.height <= half_h * 2.0 {
+            target_y = 0.0;
+        } else {
+            let min_y = -map_half_h + half_h;
+            let max_y = map_half_h - half_h;
+            target_y = target_y.clamp(min_y, max_y);
+        }
+
+        // Update camera position
+        cam_tf.translation.x = target_x;
+        cam_tf.translation.y = target_y;
     }
-
-    // Update camera position
-    cam_tf.translation.x = target_x;
-    cam_tf.translation.y = target_y;
 }
