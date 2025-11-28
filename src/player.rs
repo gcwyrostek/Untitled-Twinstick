@@ -226,13 +226,17 @@ pub fn player_movement(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     player_net: Query<
-        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider),
+        (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider, &mut InputHistory),
         (With<Player>, With<NetControl>),
     >,
     statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
 ) {
-    for (mut transform, mut velocity, mut control, player_collider) in player_net {
+    for (mut transform, mut velocity, mut control, player_collider, hist) in player_net {
         let mut dir = Vec2::ZERO;
+
+        if hist.usable {
+            continue;
+        }
         
         if control.get_type() == PlayerType::Local && !control.host {
             //info!("Rollback = {:?}", control.rollback)
@@ -253,6 +257,11 @@ pub fn player_movement(
 
             if input.pressed(KeyCode::KeyS) {
                 dir.y -= 1.;
+            }
+
+            //Debug for checking current pos
+            if input.pressed(KeyCode::KeyO) {
+                info!("Player {}'s Current Position -> {:?}", control.player_id, transform.translation);
             }
 
         //REMOTE PLAYER INPUTS ON HOST
@@ -282,7 +291,7 @@ pub fn player_movement(
         } else {
 
             if control.get_type() == PlayerType::Local {
-                info!("Roll");
+                info!("Rollback {}: {:?}", control.player_id, control.get_p_pos());
             }
             
             transform.translation = control.get_p_pos();
@@ -361,7 +370,9 @@ pub fn player_movement_from_history(
     for (mut transform, mut velocity, mut control, player_collider, mut hist) in player_net {
 
         //Check if correct player for rollback
-        if control.player_id == hist.player && hist.usable{
+        if control.player_id == hist.player && hist.usable {
+
+            info!("hist.last_pos -> {:?}", hist.last_pos);
 
             //Reset player position before rollback
             transform.translation = hist.last_pos;
@@ -376,8 +387,11 @@ pub fn player_movement_from_history(
                 input_seq = (hist.start..=(hist.start+1)).chain((hist.start+2)..=hist.end);
             }
 
+            let mut counter = 0;
+
             for i in input_seq {
                 let mut dir = Vec2::ZERO;
+                counter += 1;
 
                 if NetControl::pressed_u8(KeyCode::KeyA, hist.complete_history[i as usize]) {
                     dir.x -= 1.;
@@ -413,8 +427,8 @@ pub fn player_movement_from_history(
 
                 //keep player in bounds
                 let max = Vec3::new(
-                    WIN_W * 2. / 2. - PLAYER_SIZE / 2.,
-                    WIN_H * 2. / 2. - PLAYER_SIZE / 2.,
+                    100. * 64. / 2. - PLAYER_SIZE / 2.,
+                    100. * 64. / 2. - PLAYER_SIZE / 2.,
                     0.,
                 );
 
@@ -422,6 +436,7 @@ pub fn player_movement_from_history(
 
                 let translate = (transform.translation + change.extend(0.)).clamp(min, max);
 
+                //HERE
                 transform.translation = translate;
 
                 //Collision check
@@ -437,23 +452,25 @@ pub fn player_movement_from_history(
                     let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
                     if colliding {
                         transform.translation = transform.translation
-                            + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+                        + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
                     }
                 }
 
                 //Rounds position to integers
                 transform.translation.x = transform.translation.x.round();
                 transform.translation.y = transform.translation.y.round();
-                //info!("{:?}", transform.translation);
+                info!("History Traceback Iter: {:?}, Seq: {:?} -> {:?}", counter, i, transform.translation);
 
                 //Sets position in NetControl
                 control.set_pos_x(transform.translation.x);
                 control.set_pos_y(transform.translation.y);
             }
 
+            //info!("Setting player position via REMOTE PLAYER ON REMOTE for Player {}: {:?}", control.player_id, transform.translation);
+
             roll.is_rollback = false;
             control.rollback = false;
-            hist.usable = false;
+            hist.history_used();
         }
     }
 }

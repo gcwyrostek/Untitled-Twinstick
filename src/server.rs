@@ -199,19 +199,19 @@ fn send_players(
 
 fn send_player_update(
     socket: ResMut<'_, SocketResource>,
-    mut p_net: Query<&mut NetControl, With<NetControl>>,
+    mut p_net: Query<(&mut NetControl, &mut InputHistory), With<NetControl>>,
     mut sm: ResMut<ServerMetrics>,
 ) {
     let mut roll_check: [bool; 4] = [false; 4];
 
-    for i in p_net.iter() {
+    for (i, history) in p_net.iter() {
         if i.get_type() == PlayerType::Network {
             sm.packets_sent += 1;
-            for j in p_net.iter() {
+            for (j, loc_history) in p_net.iter() {
 
                 // If a rollback is decided, when you send the packet to that player, send with OP code 3 instead 
                 //INPUT HISTORY ROLLBACK DISABLED WHILE TESTING
-                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] < 255 && false {
+                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] > 10 && sm.loss[j.player_id as usize] < 254 {
                     let out = j.get_out_packet(3, j.player_id);
                     socket
                         .socket
@@ -239,11 +239,19 @@ fn send_player_update(
             }
         }
     }
+
+    for (mut i, mut history) in p_net.iter_mut() {
+        if roll_check[i.player_id as usize] {
+            //i.rollback = false;
+            history.usable = false;
+        }
+    }
 }
 
 #[derive(Component)]
 pub struct InputHistory {
     pub usable: bool,
+    pub use_count: u16,
     pub player: u8,
     pub complete_history: [u8;257],
     pub start: u8,
@@ -254,6 +262,7 @@ impl Default for InputHistory {
     fn default() -> Self {
         Self {
             usable: false,
+            use_count: 0,
             player: 0,
             complete_history: [0;257],
             start: 0,
@@ -270,6 +279,12 @@ impl InputHistory {
         self.start = st;
         self.end = en;
         self.last_pos = lp;
+    }
+
+    pub fn history_used(&mut self) {
+        self.usable = false;
+        self.use_count += 1;
+        info!("Disabled. Count = {}", self.use_count);
     }
 }
 
@@ -321,7 +336,7 @@ fn connection_health(
 
     for i in 1..(sm.player_count as usize) {
         if sm.seq[i] == sm.last[i] && sm.packets[i] != 0 {
-            info!("Dupe Packet for {}: Seq {}", i, sm.seq[i]);
+            //info!("Dupe Packet for {}: Seq {}", i, sm.seq[i]);
         } else if sm.last[i] == 255 && sm.seq[i] == 0 { 
 
         } else if (sm.last[i] == 255 && sm.seq[i] != 0) || (sm.last[i] + 1 != sm.seq[i]) {
@@ -336,7 +351,7 @@ fn connection_health(
             if sm.packets[i] >= dif as u8 {
 
             } else {
-                info!("Lost Packet(s) for {}: Last {}, Seq {}", i, sm.last[i], sm.seq[i]);
+                //info!("Lost Packet(s) for {}: Last {}, Seq {}", i, sm.last[i], sm.seq[i]);
             }
         } 
 
@@ -348,7 +363,7 @@ fn connection_health(
             sm.loss[i] = 0;
         }
 
-        if sm.loss[i] >= 5 {
+        if sm.loss[i] >= 10 {
             info!("Player {} missed {} packets!", i, sm.loss[i]);
             for (mut control, mut trans) in &mut p_net {
                 if control.player_id == i as u8 {
@@ -362,6 +377,12 @@ fn connection_health(
 
         sm.last[i] = sm.seq[i];
     }
+
+    /*//Status Report
+    info!("Status:\n");
+    for (mut control, mut trans) in &mut p_net {
+        info!("Player {}: {}\n", control.player_id, control.rollback);
+    }*/
 
     //Reset
     sm.packets_sent = 0;
