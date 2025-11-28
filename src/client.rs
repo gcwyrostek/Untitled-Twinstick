@@ -158,6 +158,11 @@ fn client_run(
                         //Request input history
                         3 => {
                             cm.send_history = true;
+                            for (mut control, mut trans) in p_loc.iter_mut() {
+                                if control.player_id == (buf[1] & 3) {
+                                    info!("Ideal Final Rollback Position = {:?}", trans.translation);
+                                }
+                            }
                         }
 
                         _ => {
