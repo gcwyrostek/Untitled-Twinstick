@@ -65,8 +65,8 @@ pub fn projectile_inputs(
         let dir = transform.rotation.mul_vec3(Vec3::Y).truncate();
 
         //Local Shooting
-        if shooting && cooldown.tick(time.delta()) && netcontrol.get_type() == PlayerType::Local {
-            if inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
+        if shooting && netcontrol.get_type() == PlayerType::Local {
+            if cooldown.tick(time.delta()) && inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
                 commands.spawn((
                     Sprite::from_image(asset_server.load("textures/bullet.png")),
                     Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),

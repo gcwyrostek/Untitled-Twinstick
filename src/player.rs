@@ -2,7 +2,7 @@ use crate::{
     GameState, components::FlowMap, components::Health, components::KinematicCollider,
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
     net_control::NetControl, net_control::PlayerType, player_material::PlayerBaseMaterial,
-    collisions::find_mtv, server::InputHistory, server::RollbackDetection,
+    collisions::find_mtv, server::InputHistory, server::RollbackDetection, wall::Door,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::math::bounding::IntersectsVolume;
@@ -27,7 +27,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), setup_player)
-            .add_systems(Update, player_movement.run_if(in_state(GameState::Playing)))
+            .add_systems(FixedUpdate, player_movement.run_if(in_state(GameState::Playing)))
             .add_systems(
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
@@ -179,7 +179,7 @@ pub fn setup_player(
 pub fn shape_collides_statics(
     collider_aabb: &Aabb2d,
     collider_pos: &Vec2,
-    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Door>)>,
 ) -> bool {
     for (sc, st) in &statics {
         let mut transformed_kc_shape = collider_aabb.clone();
@@ -200,7 +200,7 @@ pub fn shape_collides_statics(
 }
 
 pub fn player_calculate_flow(
-    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Door>)>,
     player_flows: Query<(&Transform, &mut FlowMap), With<Player>>,
 ) {
     let h_shape: Aabb2d = Aabb2d {
@@ -229,20 +229,16 @@ pub fn player_movement(
         (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider, &mut InputHistory),
         (With<Player>, With<NetControl>),
     >,
-    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Door>)>,
 ) {
     for (mut transform, mut velocity, mut control, player_collider, hist) in player_net {
         let mut dir = Vec2::ZERO;
-
-        if hist.usable {
-            continue;
-        }
         
         if control.get_type() == PlayerType::Local && !control.host {
             //info!("Rollback = {:?}", control.rollback)
         }
 
-        if control.get_type() == PlayerType::Local && !control.rollback {
+        if control.get_type() == PlayerType::Local {//&& !control.rollback {
             if input.pressed(KeyCode::KeyA) {
                 dir.x -= 1.;
             }
@@ -315,6 +311,12 @@ pub fn player_movement(
 
         let change = **velocity * deltat;
 
+
+        //If a rollback is detected, set the starting position to the server stated position
+        if control.get_type() == PlayerType::Local && control.rollback {
+            transform.translation = control.get_p_pos(); 
+        }
+
         transform.translation += change.extend(0.);
 
         //keep player in bounds
@@ -350,7 +352,10 @@ pub fn player_movement(
         //Rounds position to integers
         transform.translation.x = transform.translation.x.round();
         transform.translation.y = transform.translation.y.round();
-        //info!("{:?}", transform.translation);
+        
+        if control.get_type() == PlayerType::Local && !control.host && input.pressed(KeyCode::KeyP) {
+            info!("Steps: {:?}", transform.translation);
+        }
 
         //Sets position in NetControl
         control.set_pos_x(transform.translation.x);
@@ -371,11 +376,13 @@ pub fn player_movement_from_history(
 
         //Check if correct player for rollback
         if control.player_id == hist.player && hist.usable {
+            hist.history_used();
 
             info!("hist.last_pos -> {:?}", hist.last_pos);
 
             //Reset player position before rollback
-            transform.translation = hist.last_pos;
+            let mut trans_temp = hist.last_pos;
+            //transform.translation = hist.last_pos;
 
             let input_seq;
 
@@ -409,7 +416,7 @@ pub fn player_movement_from_history(
                     dir.y -= 1.;
                 }
 
-                let deltat = time.delta_secs();
+                let deltat = 0.015625;//time.delta_secs();
                 let accel = ACCEL_RATE * deltat;
                 //info!("deltat = {:?}", deltat);
 
@@ -423,7 +430,9 @@ pub fn player_movement_from_history(
 
                 let change = **velocity * deltat;
 
-                transform.translation += change.extend(0.);
+
+                //transform.translation += change.extend(0.);
+                trans_temp += change.extend(0.);
 
                 //keep player in bounds
                 let max = Vec3::new(
@@ -437,10 +446,11 @@ pub fn player_movement_from_history(
                 let translate = (transform.translation + change.extend(0.)).clamp(min, max);
 
                 //HERE
-                transform.translation = translate;
+                //transform.translation = translate;
+                trans_temp = translate;
 
                 //Collision check
-                for (sc, st) in &statics {
+                /*for (sc, st) in &statics {
                     let mut transformed_kc_shape = player_collider.shape.clone();
                     transformed_kc_shape.min += transform.translation.truncate();
                     transformed_kc_shape.max += transform.translation.truncate();
@@ -454,23 +464,40 @@ pub fn player_movement_from_history(
                         transform.translation = transform.translation
                         + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
                     }
+                }*/
+                for (sc, st) in &statics {
+                    let mut transformed_kc_shape = player_collider.shape.clone();
+                    transformed_kc_shape.min += trans_temp.truncate();
+                    transformed_kc_shape.max += trans_temp.truncate();
+
+                    let mut transformed_sc_shape = sc.shape.clone();
+                    transformed_sc_shape.min += st.translation.truncate();
+                    transformed_sc_shape.max += st.translation.truncate();
+
+                    let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+                    if colliding {
+                        trans_temp = trans_temp
+                        + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+                    }
                 }
 
                 //Rounds position to integers
-                transform.translation.x = transform.translation.x.round();
-                transform.translation.y = transform.translation.y.round();
-                info!("History Traceback Iter: {:?}, Seq: {:?} -> {:?}", counter, i, transform.translation);
+                trans_temp.x = trans_temp.x.round();
+                trans_temp.y = trans_temp.y.round();
+                info!("History Traceback Iter: {:?}, Seq: {:?} -> {:?}", counter, i, trans_temp);
 
                 //Sets position in NetControl
-                control.set_pos_x(transform.translation.x);
-                control.set_pos_y(transform.translation.y);
+                //control.set_pos_x(trans_temp.x);
+                //control.set_pos_y(trans_temp.y);
             }
 
             //info!("Setting player position via REMOTE PLAYER ON REMOTE for Player {}: {:?}", control.player_id, transform.translation);
 
+            control.set_pos_x(trans_temp.x);
+            control.set_pos_y(trans_temp.y);
+
             roll.is_rollback = false;
             control.rollback = false;
-            hist.history_used();
         }
     }
 }
