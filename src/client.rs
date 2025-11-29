@@ -160,7 +160,9 @@ fn client_run(
                             cm.send_history = true;
                             for (mut control, mut trans) in p_loc.iter_mut() {
                                 if control.player_id == (buf[1] & 3) {
-                                    info!("Ideal Final Rollback Position = {:?}", trans.translation);
+                                    control.set_player_state_limited(buf);
+                                    //HISTORY DEBUG
+                                    //info!("Ideal Final Rollback Position = {:?}", trans.translation);
                                 }
                             }
                         }
@@ -184,12 +186,12 @@ pub fn input_converter(
     input: Res<ButtonInput<KeyCode>>,
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
-    mut pl_cont: Query<&mut NetControl, (With<NetControl>, With<Local>)>,
+    mut pl_cont: Query<(&mut NetControl, &mut Transform), (With<NetControl>, With<Local>)>,
     mut inventory: ResMut<PlayerInventory>,
     mut cm: ResMut<ClientMetrics>,
 )   {
         let mut input_result: u8 = 0;
-        let mut player = pl_cont.single_mut().unwrap();
+        let (mut player, mut transform) = pl_cont.single_mut().unwrap();
         //WASD00L0
         if input.pressed(KeyCode::KeyW) {
             input_result += 128;
@@ -240,8 +242,11 @@ pub fn input_converter(
                 .send_to(&cm.input_history, "127.0.0.1:2525")
                 .expect("couldn't send data");
             }
+        } else {
+            //HISTORY DEBUG
+            //info!("Seq: {} -> {:?}", cm.seq_num, transform.translation);
         }
-        //info!("seq = {}", cm.seq_num);
+
         if cm.seq_num == 255 {
             cm.seq_num = 0;
         } else {

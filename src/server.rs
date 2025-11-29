@@ -34,7 +34,7 @@ impl Plugin for ServerPlugin {
                 .run_if(type_equals_host),
         )
         .add_systems(
-            FixedUpdate,
+            FixedLast,
             send_player_update
                 .run_if(in_state(GameState::Playing))
                 .run_if(type_equals_host),
@@ -242,7 +242,7 @@ fn send_player_update(
 
     for (mut i, mut history) in p_net.iter_mut() {
         if roll_check[i.player_id as usize] {
-            //i.rollback = false;
+            i.rollback = false;
             history.usable = false;
         }
     }

@@ -1,4 +1,6 @@
-use crate::{GameState, components::KinematicCollider, components::StaticCollider, player::Player, projectile::Projectile};
+use crate::{GameState, components::KinematicCollider, components::StaticCollider, player::Player, projectile::Projectile,
+            wall::Door,
+};
 use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 pub struct CollisionsPlugin;
@@ -44,7 +46,8 @@ pub fn do_collisions(
     mut commands: Commands,
     kinematics: Query<(&KinematicCollider, &mut Transform), (Without<StaticCollider>, Without<Projectile>)>,
     bullets: Query<(&KinematicCollider, &mut Transform, Entity), (Without<StaticCollider>, With<Projectile>)>,
-    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Player>)>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Player>, Without<Door>)>,
+    doors: Query<(&Door, &StaticCollider, &Transform), With<Door>>,
 ) {
     for (kc, mut kt) in kinematics {
         for (sc, st) in &statics {
@@ -76,6 +79,21 @@ pub fn do_collisions(
 
             let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
             if colliding {
+                commands.entity(this).despawn();
+            }
+        }
+
+        for (door, dc, dt) in doors {
+            let mut transformed_kc_shape = kc.shape.clone();
+            transformed_kc_shape.min += kt.translation.truncate();
+            transformed_kc_shape.max += kt.translation.truncate();
+
+            let mut transformed_sc_shape = dc.shape.clone();
+            transformed_sc_shape.min += dt.translation.truncate();
+            transformed_sc_shape.max += dt.translation.truncate();
+
+            let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+            if colliding && !door.open {
                 commands.entity(this).despawn();
             }
         }
