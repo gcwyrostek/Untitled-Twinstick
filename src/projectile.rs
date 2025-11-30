@@ -85,8 +85,6 @@ pub fn projectile_inputs(
                 if netcontrol.host {
                     netcontrol.net_input = 2;
                 }
-            } else if netcontrol.host {
-                netcontrol.net_input = 0;
             }
         }
         //Local NOT Shooting

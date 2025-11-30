@@ -1,6 +1,6 @@
 use crate::{
     AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType, net_control::Local, net_control::Network,
-    player::Player, player::Velocity, player,
+    player::Player, player::Velocity, player, enemy::Enemy, enemy::Awake,
 };
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
@@ -65,7 +65,7 @@ impl Default for RollbackDetection {
     }
 }
 
-fn type_equals_host(game_type: Res<LogicType>) -> bool {
+pub fn type_equals_host(game_type: Res<LogicType>) -> bool {
     return game_type.l_type == AssignedType::Host;
 }
 
@@ -200,9 +200,23 @@ fn send_players(
 fn send_player_update(
     socket: ResMut<'_, SocketResource>,
     mut p_net: Query<(&mut NetControl, &mut InputHistory), With<NetControl>>,
+    enemy_list: Query<(&Enemy, &Transform), (With<Enemy>, With<Awake>)>,
     mut sm: ResMut<ServerMetrics>,
 ) {
     let mut roll_check: [bool; 4] = [false; 4];
+
+    let mut counter = 1;
+    let mut en_out: [u8;256] = [0; 256];
+    en_out[0] = 4;
+    for (enemy, enemy_trans) in enemy_list {
+        let out_x = (enemy_trans.translation.x as i16).to_ne_bytes();
+        let out_y = (enemy_trans.translation.y as i16).to_ne_bytes();
+        en_out[counter+0] = enemy.enemy_id;
+        en_out[(counter+1)..(counter+3)].copy_from_slice(&out_x);
+        en_out[(counter+3)..(counter+5)].copy_from_slice(&out_y);
+        info!("{:?}", en_out);
+        counter += 5;
+    }
 
     for (i, history) in p_net.iter() {
         if i.get_type() == PlayerType::Network {
@@ -237,6 +251,12 @@ fn send_player_update(
                         .expect("couldn't send data");
                 }
             }
+
+            //Send enemy info
+            socket
+                    .socket
+                    .send_to(&en_out, i.get_addr().unwrap())
+                    .expect("couldn't send data");
         }
     }
 
