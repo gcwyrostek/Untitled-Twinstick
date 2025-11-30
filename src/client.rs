@@ -2,11 +2,13 @@ use crate::{
     AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType, net_control::Local, net_control::Network,
     player::Player,
     collectible::PlayerInventory,
+    enemy::Enemy,
 };
 use bevy::prelude::*;
 use bevy::time::Stopwatch;
 use std::time::Duration;
 use std::net::UdpSocket;
+use std::collections::HashMap;
 
 const IP_CONST: &str = "127.0.0.1:";
 
@@ -94,10 +96,11 @@ fn client_run(
     input: Res<ButtonInput<KeyCode>>,
     socket: ResMut<'_, SocketResource>,
     mut p_loc: Query<(&mut NetControl, &mut Transform), With<NetControl>>,
+    mut enemy: Query<(&mut Enemy, &mut Transform), (With <Enemy>, Without<NetControl>)>,
     mut next_state: ResMut<NextState<GameState>>,
     mut cm: ResMut<ClientMetrics>,
 ) {
-    let mut buf = [0; 11];
+    let mut buf = [0; 321];
     //Fake packet loss option
     if !input.pressed(KeyCode::KeyP) {
         for l in 1..8 {
@@ -141,11 +144,15 @@ fn client_run(
                                 //The first check hard limits us to 4 players (pid 0 to 3) as I started packing shooting into the same byte.
                                 //The second check prevents server from overwriting active player info. Will need to add 'else' to handle rollback system
                                 if control.player_id == (buf[1] & 3) && control.player_type == PlayerType::Network {
-                                    control.set_player_state(buf);
+                                    let mut inp_pack = [0; 11];
+                                    inp_pack.copy_from_slice(&buf[0..11]); 
+                                    control.set_player_state(inp_pack);
                                 //Sends the updated info except angle, used for rollback
                                 } else if control.player_id == (buf[1] & 3) && control.player_type == PlayerType::Local {
                                     //info!("{:08b}", buf[1]);
-                                    control.set_player_state_limited(buf);
+                                    let mut inp_pack = [0; 11];
+                                    inp_pack.copy_from_slice(&buf[0..11]);
+                                    control.set_player_state_limited(inp_pack);
                                 }
                             }
                         }
@@ -160,9 +167,42 @@ fn client_run(
                             cm.send_history = true;
                             for (mut control, mut trans) in p_loc.iter_mut() {
                                 if control.player_id == (buf[1] & 3) {
-                                    control.set_player_state_limited(buf);
+                                    let mut inp_pack = [0; 11];
+                                    inp_pack.copy_from_slice(&buf[0..11]);
+                                    control.set_player_state_limited(inp_pack);
                                     //HISTORY DEBUG
                                     //info!("Ideal Final Rollback Position = {:?}", trans.translation);
+                                }
+                            }
+                        }
+
+                        //Enemy Packet update
+                        4 => {
+                            //info!("ENEMY: {:?}", buf);
+                            let mut start = 1;
+
+                            let mut enemy_list = HashMap::new();
+                            while start < 321 {
+                                if buf[start] != 0 {
+                                    let mut unpack_x: [u8; 2] = [0; 2];
+                                    let mut unpack_y: [u8; 2] = [0; 2];
+                                    unpack_x.copy_from_slice(&buf[(start+1 as usize)..=(start+2 as usize)]);
+                                    unpack_y.copy_from_slice(&buf[(start+3 as usize)..=(start+4 as usize)]);
+                                    let x = i16::from_ne_bytes(unpack_x);
+                                    let y = i16::from_ne_bytes(unpack_y);
+                                    enemy_list.insert(buf[start], (x,y));
+                                }
+                                start += 5;
+                            }
+
+                            for (mut enemy, mut enemy_trans) in enemy.iter_mut() {
+                                match enemy_list.get(&enemy.enemy_id) {
+                                    Some(out_tup) => {
+                                        enemy_trans.translation.x = out_tup.0 as f32;
+                                        enemy_trans.translation.y = out_tup.1 as f32;
+                                        //info!("Enemy {} -> {:?}", enemy.enemy_id, enemy_trans.translation);
+                                    }
+                                    None => {}
                                 }
                             }
                         }
