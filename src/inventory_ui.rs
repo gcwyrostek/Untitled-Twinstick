@@ -32,8 +32,12 @@ pub fn setup_revive_ui(
             parent.spawn((
                 ImageNode::new(asset_server.load("revive kit/Revive Kit_albedo.png")),
                 Node {
-                    width: Val::Px(148.0),
-                    height: Val::Px(148.0),
+                    width: Val::Px(200.0),
+                    height: Val::Px(200.0),
+                    margin: UiRect {
+                        right: Val::Px(-50.0), // Move picture right to align with text
+                        ..default()
+                    },
                     ..default()
                 },
             ));
@@ -49,7 +53,9 @@ pub fn setup_revive_ui(
                 ReviveKitCounter,
                 Node {
                     margin: UiRect {
-                        left: Val::Px(16.0), // spacing from the icon
+                        // Adjust these for alignment
+                        top: Val::Px(100.0), 
+                        bottom: Val::Px(0.0),
                         ..default()
                     },
                     ..default()
