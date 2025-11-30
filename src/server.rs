@@ -215,7 +215,7 @@ fn send_player_update(
             en_out[counter+0] = enemy.enemy_id;
             en_out[(counter+1)..(counter+3)].copy_from_slice(&out_x);
             en_out[(counter+3)..(counter+5)].copy_from_slice(&out_y);
-            info!("{:?}", en_out);
+            //info!("{:?}", en_out);
             counter += 5;
         }
     }
@@ -223,11 +223,19 @@ fn send_player_update(
     for (i, history) in p_net.iter() {
         if i.get_type() == PlayerType::Network {
             sm.packets_sent += 1;
-            for (j, loc_history) in p_net.iter() {
+            for (j, loc_history) in p_net.iter() { 
+
+                /*if i.player_id == j.player_id {
+                    if sm.counter_schedule >= 60 {
+                        roll_check[j.player_id as usize] = true;
+                    } else {
+                        roll_check[j.player_id as usize] = false;
+                    }
+                } 
 
                 // If a rollback is decided, when you send the packet to that player, send with OP code 3 instead 
                 //INPUT HISTORY ROLLBACK DISABLED WHILE TESTING
-                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] > 10 && sm.loss[j.player_id as usize] < 254 {
+                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] > 10 && sm.loss[j.player_id as usize] < 254 &&false {
                     let out = j.get_out_packet(3, j.player_id);
                     socket
                         .socket
@@ -235,9 +243,9 @@ fn send_player_update(
                         .expect("couldn't send data");
                     //If the rollback flag is flipped mark it in the bool array
                     roll_check[j.player_id as usize] = true;
-                }
+                }*/
                 //If packet loss was longer than the history window, just hard roll back
-                else if j.rollback && i.player_id == j.player_id {
+                if j.rollback && i.player_id == j.player_id {
                     let out = j.get_out_packet(1, j.player_id);
                     socket
                         .socket
@@ -262,9 +270,15 @@ fn send_player_update(
         }
     }
 
+    if sm.counter_schedule >= 60 {
+        sm.counter_schedule = 0;
+    } else {
+        sm.counter_schedule += 1;
+    }
+
     for (mut i, mut history) in p_net.iter_mut() {
         if roll_check[i.player_id as usize] {
-            i.rollback = false;
+            //i.rollback = false;
             history.usable = false;
         }
     }
@@ -324,6 +338,7 @@ pub struct ServerMetrics {
     pub last_pos: Vec<Vec3>,
 
     pub loss: Vec<u8>,
+    pub counter_schedule: u8,
     
 }
 impl Default for ServerMetrics {
@@ -341,6 +356,7 @@ impl Default for ServerMetrics {
             last_pos: vec![Vec3::ZERO; 4],
 
             loss: vec![0; 4],
+            counter_schedule: 0,
         }
     }
 }
@@ -385,11 +401,21 @@ fn connection_health(
             sm.loss[i] = 0;
         }
 
-        if sm.loss[i] >= 10 {
+        /*if sm.loss[i] >= 10 {
             info!("Player {} missed {} packets!", i, sm.loss[i]);
             for (mut control, mut trans) in &mut p_net {
                 if control.player_id == i as u8 {
                     //info!("sm.loss setting {}.rollback = true", i);
+                    sm.last_pos[i] = trans.translation;
+                    sm.last_conf_seq[i] = sm.last[i];
+                    control.rollback = true;
+                }
+            }
+        }*/
+
+        if sm.counter_schedule >= 60 {
+            for (mut control, mut trans) in &mut p_net {
+                if control.player_id == i as u8 {
                     sm.last_pos[i] = trans.translation;
                     sm.last_conf_seq[i] = sm.last[i];
                     control.rollback = true;
