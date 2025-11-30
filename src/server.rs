@@ -206,16 +206,18 @@ fn send_player_update(
     let mut roll_check: [bool; 4] = [false; 4];
 
     let mut counter = 1;
-    let mut en_out: [u8;256] = [0; 256];
+    let mut en_out: [u8;321] = [0; 321];
     en_out[0] = 4;
     for (enemy, enemy_trans) in enemy_list {
-        let out_x = (enemy_trans.translation.x as i16).to_ne_bytes();
-        let out_y = (enemy_trans.translation.y as i16).to_ne_bytes();
-        en_out[counter+0] = enemy.enemy_id;
-        en_out[(counter+1)..(counter+3)].copy_from_slice(&out_x);
-        en_out[(counter+3)..(counter+5)].copy_from_slice(&out_y);
-        info!("{:?}", en_out);
-        counter += 5;
+        if counter != 321 {
+            let out_x = (enemy_trans.translation.x as i16).to_ne_bytes();
+            let out_y = (enemy_trans.translation.y as i16).to_ne_bytes();
+            en_out[counter+0] = enemy.enemy_id;
+            en_out[(counter+1)..(counter+3)].copy_from_slice(&out_x);
+            en_out[(counter+3)..(counter+5)].copy_from_slice(&out_y);
+            info!("{:?}", en_out);
+            counter += 5;
+        }
     }
 
     for (i, history) in p_net.iter() {
