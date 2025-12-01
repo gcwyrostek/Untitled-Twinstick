@@ -7,6 +7,7 @@ use bevy::sprite::{Material2d, Material2dPlugin, AlphaMode2d};
 use bevy::math::primitives::Rectangle;
 use bevy::render::render_resource::ShaderRef;
 use crate::player::Player;
+use crate::GameState;
 
 pub struct SimpleDeferredLitePlugin;
 
@@ -26,7 +27,7 @@ impl Plugin for SimpleDeferredLitePlugin {
             .add_systems(Update, (
                 spawn_normals_proxy_for_added,
                 handle_resize,
-                update_light_from_player,
+                update_light_from_player.run_if(in_state(crate::GameState::Playing)),
             ));
     }
 }
