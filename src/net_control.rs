@@ -15,6 +15,8 @@ pub struct NetControl {
     pub p_pos: Vec3,
     pub p_shot: bool,
 
+    pub rollback: bool,
+
     //Net
     player_addr: Option<SocketAddr>,
     player_pos_x: i32,
@@ -24,6 +26,7 @@ impl NetControl {
     pub fn new(is_host: bool, ptype: PlayerType, pid: u8, addr: Option<SocketAddr>) -> Self {
         Self {
             host: is_host,
+            //I have added single components for both Local and Network, to allow them to go directly on the player
             player_type: ptype,
             player_id: pid,
 
@@ -31,6 +34,8 @@ impl NetControl {
             net_angle: 0,
             p_pos: Vec3::ZERO,
             p_shot: false,
+
+            rollback: false,
 
             player_addr: addr,
             player_pos_x: 0,
@@ -65,6 +70,17 @@ impl NetControl {
             KeyCode::KeyA => self.net_input & 64 == 64,
             KeyCode::KeyS => self.net_input & 32 == 32,
             KeyCode::KeyD => self.net_input & 16 == 16,
+            _ => false,
+        }
+    }
+
+    //Generic function that can read inputs from a basic u8
+    pub fn pressed_u8(input: KeyCode, test_int: u8) -> bool {
+        match (input) {
+            KeyCode::KeyW => test_int & 128 == 128,
+            KeyCode::KeyA => test_int & 64 == 64,
+            KeyCode::KeyS => test_int & 32 == 32,
+            KeyCode::KeyD => test_int & 16 == 16,
             _ => false,
         }
     }
@@ -129,7 +145,7 @@ impl NetControl {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///                                            Outgoing Packet                                           ///
+    ///                                     Outgoing Server Packet                                           ///
     ///                                                                                                      ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -138,8 +154,8 @@ impl NetControl {
         let out_x = self.get_pos_x();
         let out_y = self.get_pos_y();
         out_pack[0] = op;
-        //I'm packing shooting into the player_id byte and no one can stop me
-        out_pack[1] = ((self.net_input & 3) << 6) + pid;
+        //I'm packing p_shot and rollback into the player_id byte and no one can stop me
+        out_pack[1] = ((self.rollback as u8) << 7) + ((self.net_input & 2) << 5) + pid;
         out_pack[2..6].copy_from_slice(&out_x);
         out_pack[6..10].copy_from_slice(&out_y);
         out_pack[10] = self.net_angle;
@@ -149,7 +165,7 @@ impl NetControl {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///                                            Incoming Packet                                           ///
+    ///                                     Incoming Client Packet                                           ///
     ///                                                                                                      ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -161,19 +177,40 @@ impl NetControl {
         let x = i32::from_ne_bytes(unpack_x);
         let y = i32::from_ne_bytes(unpack_y);
         self.p_pos = Vec3::new(x as f32, y as f32, 0.);
-        self.p_shot = { pack[1] & 128 == 128 };
+        self.p_shot = { pack[1] & 64 == 64 };
+        self.rollback = { pack[1] & 128 == 128 };
         self.net_angle = pack[10];
         //info!("Player {}'s Position: {:?}", self.player_id, self.p_pos);
+    }
+
+    //Everything gets set but angle, used for rollback
+    pub fn set_player_state_limited(&mut self, pack: [u8; 11]) {
+        let mut unpack_x: [u8; 4] = [0; 4];
+        let mut unpack_y: [u8; 4] = [0; 4];
+        unpack_x.copy_from_slice(&pack[2..6]);
+        unpack_y.copy_from_slice(&pack[6..10]);
+        let x = i32::from_ne_bytes(unpack_x);
+        let y = i32::from_ne_bytes(unpack_y);
+        self.p_pos = Vec3::new(x as f32, y as f32, 0.);
+        self.p_shot = { pack[1] & 64 == 64 };
+        self.rollback = { pack[1] & 128 == 128 };
+        //self.net_angle = pack[10];
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub enum PlayerType {
     Local,
     Network,
 }
+
+#[derive(Component)]
+pub struct Local;
+
+#[derive(Component)]
+pub struct Network;
 
 pub struct NetControlPlugin;
 impl Plugin for NetControlPlugin {

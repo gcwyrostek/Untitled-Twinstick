@@ -2,6 +2,7 @@
 #![allow(warnings)]
 
 use crate::pickup_system::PickupPlugin;
+use crate::server::RollbackDetection;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::{
     prelude::*,
@@ -106,6 +107,7 @@ fn main() {
         .insert_resource(LogicType {
             l_type: AssignedType::No,
         })
+        .insert_resource(RollbackDetection::default())
         // Core game systems
         //.add_systems(OnEnter(GameState::Playing), spawn_test_pickup)
         .add_systems(Startup, setup_cursor_icon)

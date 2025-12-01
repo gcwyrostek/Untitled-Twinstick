@@ -1,4 +1,6 @@
-use crate::{GameState, components::KinematicCollider, components::StaticCollider};
+use crate::{GameState, components::KinematicCollider, components::StaticCollider, player::Player, projectile::Projectile,
+            wall::Door,
+};
 use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 pub struct CollisionsPlugin;
@@ -8,7 +10,7 @@ impl Plugin for CollisionsPlugin {
     }
 }
 
-fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
+pub fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
     let a_min = pushee.min;
     let a_max = pushee.max;
     let b_min = pusher.min;
@@ -39,9 +41,13 @@ fn find_mtv(pushee: &Aabb2d, pusher: &Aabb2d) -> Vec2 {
     }
 }
 
+//Player collisions have been removed from here and placed in player movement, in order to be able to resimulate from inputs for rollback
 pub fn do_collisions(
-    kinematics: Query<(&KinematicCollider, &mut Transform), Without<StaticCollider>>,
-    statics: Query<(&StaticCollider, &Transform), Without<KinematicCollider>>,
+    mut commands: Commands,
+    kinematics: Query<(&KinematicCollider, &mut Transform), (Without<StaticCollider>, Without<Projectile>)>,
+    bullets: Query<(&KinematicCollider, &mut Transform, Entity), (Without<StaticCollider>, With<Projectile>)>,
+    statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Player>, Without<Door>)>,
+    doors: Query<(&Door, &StaticCollider, &Transform), With<Door>>,
 ) {
     for (kc, mut kt) in kinematics {
         for (sc, st) in &statics {
@@ -57,6 +63,38 @@ pub fn do_collisions(
             if colliding {
                 kt.translation = kt.translation
                     + find_mtv(&transformed_kc_shape, &transformed_sc_shape).extend(0.);
+            }
+        }
+    }
+
+    for (kc, mut kt, this) in bullets {
+        for (sc, st) in &statics {
+            let mut transformed_kc_shape = kc.shape.clone();
+            transformed_kc_shape.min += kt.translation.truncate();
+            transformed_kc_shape.max += kt.translation.truncate();
+
+            let mut transformed_sc_shape = sc.shape.clone();
+            transformed_sc_shape.min += st.translation.truncate();
+            transformed_sc_shape.max += st.translation.truncate();
+
+            let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+            if colliding {
+                commands.entity(this).despawn();
+            }
+        }
+
+        for (door, dc, dt) in doors {
+            let mut transformed_kc_shape = kc.shape.clone();
+            transformed_kc_shape.min += kt.translation.truncate();
+            transformed_kc_shape.max += kt.translation.truncate();
+
+            let mut transformed_sc_shape = dc.shape.clone();
+            transformed_sc_shape.min += dt.translation.truncate();
+            transformed_sc_shape.max += dt.translation.truncate();
+
+            let colliding = transformed_kc_shape.intersects(&transformed_sc_shape);
+            if colliding && !door.open {
+                commands.entity(this).despawn();
             }
         }
     }

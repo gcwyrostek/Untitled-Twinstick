@@ -1,11 +1,11 @@
 use crate::{
     collectible::{consume_ammo, PlayerInventory},
     GameState, net_control::NetControl, net_control::PlayerType, player::FireCooldown,
-    player::Player,
+    player::Player, components::KinematicCollider,
 };
 use bevy::input::ButtonInput;
 use bevy::input::mouse::MouseButton;
-use bevy::prelude::*;
+use bevy::{math::bounding::Aabb2d, math::bounding::IntersectsVolume, prelude::*};
 
 const PROJECTILE_SPEED: f32 = 1000.;
 
@@ -64,9 +64,9 @@ pub fn projectile_inputs(
         let projectile_pos = transform.translation;
         let dir = transform.rotation.mul_vec3(Vec3::Y).truncate();
 
-        //Host Shooting
-        if shooting && cooldown.tick(time.delta()) && netcontrol.get_type() == PlayerType::Local {
-            if inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
+        //Local Shooting
+        if shooting && netcontrol.get_type() == PlayerType::Local {
+            if cooldown.tick(time.delta()) && inventory.has_available_ammo() && consume_ammo(&mut inventory, 1) {
                 commands.spawn((
                     Sprite::from_image(asset_server.load("textures/bullet.png")),
                     Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
@@ -74,23 +74,28 @@ pub fn projectile_inputs(
                         velocity: dir * PROJECTILE_SPEED,
                     },
                     Projectile,
+                    KinematicCollider {
+                        shape: Aabb2d {
+                            min: Vec2 { x: 16., y: 16. },
+                            max: Vec2 { x: 32., y: 32. },
+                        },
+                    },
                 ));
-
+                //Host Shooting
                 if netcontrol.host {
                     netcontrol.net_input = 2;
                 }
-            } else if netcontrol.host {
-                netcontrol.net_input = 0;
             }
         }
-        //Host NOT Shooting
+        //Local NOT Shooting
         else if !shooting && netcontrol.get_type() == PlayerType::Local {
+            //Host NOT Shooting
             if netcontrol.host {
                 netcontrol.net_input = 0;
             }
         }
-        //Networked player on Host
-        else if netcontrol.clicked(MouseButton::Left)
+        //Networked player on Host/Network
+        else if (netcontrol.clicked(MouseButton::Left) || netcontrol.p_shot)
             && cooldown.tick(time.delta())
             && netcontrol.get_type() == PlayerType::Network
         {
@@ -101,20 +106,12 @@ pub fn projectile_inputs(
                     velocity: dir * PROJECTILE_SPEED,
                 },
                 Projectile,
-            ));
-        }
-        //Networked player on Network
-        else if netcontrol.p_shot
-            && cooldown.tick(time.delta())
-            && netcontrol.get_type() == PlayerType::Network
-        {
-            commands.spawn((
-                Sprite::from_image(asset_server.load("textures/bullet.png")),
-                Transform::from_scale(Vec3::splat(0.2)).with_translation(projectile_pos),
-                Velocity {
-                    velocity: dir * PROJECTILE_SPEED,
+                KinematicCollider {
+                    shape: Aabb2d {
+                        min: Vec2 { x: 16., y: 16. },
+                        max: Vec2 { x: 32., y: 32. },
+                    },
                 },
-                Projectile,
             ));
         }
     }
