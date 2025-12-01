@@ -5,8 +5,8 @@ use crate::components::StaticCollider;
 use crate::enemy::Enemy;
 use crate::player_material::PlayerBaseMaterial;
 
-/// Size of the SDF texture (512x512 )
-const SDF_TEXTURE_SIZE: u32 = 512;
+/// Size of the SDF texture (256x256)
+const SDF_TEXTURE_SIZE: u32 = 256;
 
 /// This defines a 5120x5120 world unit area
 const SDF_WORLD_SIZE: f32 = 5120.0;
@@ -25,6 +25,8 @@ impl Plugin for SdfShadowsPlugin {
 #[derive(Resource)]
 pub struct SdfTexture {
     pub texture: Handle<Image>,
+    pub frames_since_update: u32,
+    pub update_interval: u32, // Update every N frames
 }
 
 impl FromWorld for SdfTexture {
@@ -41,7 +43,7 @@ impl FromWorld for SdfTexture {
         let mut image = Image::new_fill(
             size,
             TextureDimension::D2,
-            &[0u8; 4], 
+            &[0u8; 4],
             TextureFormat::R32Float,
             RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
         );
@@ -52,7 +54,11 @@ impl FromWorld for SdfTexture {
 
         let texture = images.add(image);
 
-        SdfTexture { texture }
+        SdfTexture {
+            texture,
+            frames_since_update: 0,
+            update_interval: 5, // Update every 5 frames
+        }
     }
 }
 
@@ -81,10 +87,17 @@ impl Occluder {
 /// System that generates the SDF texture each frame
 fn generate_sdf(
     mut images: ResMut<Assets<Image>>,
-    sdf_texture: Res<SdfTexture>,
+    mut sdf_texture: ResMut<SdfTexture>,
     enemies: Query<&Transform, With<Enemy>>,
     walls: Query<&Transform, With<StaticCollider>>,
 ) {
+    // Frame-skipping logic: only update every N frames
+    sdf_texture.frames_since_update += 1;
+    if sdf_texture.frames_since_update < sdf_texture.update_interval {
+        return;
+    }
+    sdf_texture.frames_since_update = 0;
+
     let mut occluders = Vec::new();
 
     // Add enemies as occluders

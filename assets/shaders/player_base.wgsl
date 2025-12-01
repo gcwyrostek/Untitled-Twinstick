@@ -33,8 +33,8 @@ struct Light {
 
 // SDF shadow constants
 const SDF_WORLD_SIZE: f32 = 5120.0;
-const SDF_TEXTURE_SIZE: f32 = 512.0;
-const MAX_RAYMARCH_STEPS: i32 = 128;
+const SDF_TEXTURE_SIZE: f32 = 256.0;
+const MAX_RAYMARCH_STEPS: i32 = 64;
 const SHADOW_THRESHOLD: f32 = 3.0;
 // Convert world position to SDF texture UV 
 fn world_to_sdf_uv(world_pos: vec2<f32>) -> vec2<f32> {

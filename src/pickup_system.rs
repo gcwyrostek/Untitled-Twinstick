@@ -157,7 +157,7 @@ fn pickup_system(
                         inventory.revive_kits += 1;
                         revive_writer.write(ReviveKitPickupEvent);
                         commands.entity(entity).despawn();
-                        println!("Collected a revive kit! Total: {}", inventory.revive_kits);
+                        // println!("Collected a revive kit! Total: {}", inventory.revive_kits);
 
                     }
                 }
@@ -194,7 +194,7 @@ fn pickup_system(
                         inventory.revive_kits += 1;
                         revive_writer.write(ReviveKitPickupEvent);
                         commands.entity(entity).despawn();
-                        println!("Collected a revive kit! Total: {}", inventory.revive_kits);
+                        // println!("Collected a revive kit! Total: {}", inventory.revive_kits);
 
                     }
                 }

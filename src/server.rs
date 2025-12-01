@@ -1,6 +1,6 @@
 use crate::{
     AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType, net_control::Local, net_control::Network,
-    player::Player, player::Velocity, player,
+    player::Player, player::Velocity, player, enemy::Enemy, enemy::Awake,
 };
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
@@ -34,7 +34,7 @@ impl Plugin for ServerPlugin {
                 .run_if(type_equals_host),
         )
         .add_systems(
-            FixedUpdate,
+            FixedLast,
             send_player_update
                 .run_if(in_state(GameState::Playing))
                 .run_if(type_equals_host),
@@ -65,7 +65,7 @@ impl Default for RollbackDetection {
     }
 }
 
-fn type_equals_host(game_type: Res<LogicType>) -> bool {
+pub fn type_equals_host(game_type: Res<LogicType>) -> bool {
     return game_type.l_type == AssignedType::Host;
 }
 
@@ -199,19 +199,43 @@ fn send_players(
 
 fn send_player_update(
     socket: ResMut<'_, SocketResource>,
-    mut p_net: Query<&mut NetControl, With<NetControl>>,
+    mut p_net: Query<(&mut NetControl, &mut InputHistory), With<NetControl>>,
+    enemy_list: Query<(&Enemy, &Transform), (With<Enemy>, With<Awake>)>,
     mut sm: ResMut<ServerMetrics>,
 ) {
     let mut roll_check: [bool; 4] = [false; 4];
 
-    for i in p_net.iter() {
+    let mut counter = 1;
+    let mut en_out: [u8;321] = [0; 321];
+    en_out[0] = 4;
+    for (enemy, enemy_trans) in enemy_list {
+        if counter != 321 {
+            let out_x = (enemy_trans.translation.x as i16).to_ne_bytes();
+            let out_y = (enemy_trans.translation.y as i16).to_ne_bytes();
+            en_out[counter+0] = enemy.enemy_id;
+            en_out[(counter+1)..(counter+3)].copy_from_slice(&out_x);
+            en_out[(counter+3)..(counter+5)].copy_from_slice(&out_y);
+            //info!("{:?}", en_out);
+            counter += 5;
+        }
+    }
+
+    for (i, history) in p_net.iter() {
         if i.get_type() == PlayerType::Network {
             sm.packets_sent += 1;
-            for j in p_net.iter() {
+            for (j, loc_history) in p_net.iter() { 
+
+                /*if i.player_id == j.player_id {
+                    if sm.counter_schedule >= 60 {
+                        roll_check[j.player_id as usize] = true;
+                    } else {
+                        roll_check[j.player_id as usize] = false;
+                    }
+                } 
 
                 // If a rollback is decided, when you send the packet to that player, send with OP code 3 instead 
                 //INPUT HISTORY ROLLBACK DISABLED WHILE TESTING
-                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] < 255 && false {
+                if j.rollback && i.player_id == j.player_id && sm.loss[j.player_id as usize] > 10 && sm.loss[j.player_id as usize] < 254 &&false {
                     let out = j.get_out_packet(3, j.player_id);
                     socket
                         .socket
@@ -219,9 +243,9 @@ fn send_player_update(
                         .expect("couldn't send data");
                     //If the rollback flag is flipped mark it in the bool array
                     roll_check[j.player_id as usize] = true;
-                }
+                }*/
                 //If packet loss was longer than the history window, just hard roll back
-                else if j.rollback && i.player_id == j.player_id {
+                if j.rollback && i.player_id == j.player_id {
                     let out = j.get_out_packet(1, j.player_id);
                     socket
                         .socket
@@ -237,6 +261,25 @@ fn send_player_update(
                         .expect("couldn't send data");
                 }
             }
+
+            //Send enemy info
+            socket
+                    .socket
+                    .send_to(&en_out, i.get_addr().unwrap())
+                    .expect("couldn't send data");
+        }
+    }
+
+    if sm.counter_schedule >= 60 {
+        sm.counter_schedule = 0;
+    } else {
+        sm.counter_schedule += 1;
+    }
+
+    for (mut i, mut history) in p_net.iter_mut() {
+        if roll_check[i.player_id as usize] {
+            //i.rollback = false;
+            history.usable = false;
         }
     }
 }
@@ -244,6 +287,7 @@ fn send_player_update(
 #[derive(Component)]
 pub struct InputHistory {
     pub usable: bool,
+    pub use_count: u16,
     pub player: u8,
     pub complete_history: [u8;257],
     pub start: u8,
@@ -254,6 +298,7 @@ impl Default for InputHistory {
     fn default() -> Self {
         Self {
             usable: false,
+            use_count: 0,
             player: 0,
             complete_history: [0;257],
             start: 0,
@@ -271,6 +316,12 @@ impl InputHistory {
         self.end = en;
         self.last_pos = lp;
     }
+
+    pub fn history_used(&mut self) {
+        self.usable = false;
+        self.use_count += 1;
+        info!("Disabled. Count = {}", self.use_count);
+    }
 }
 
 #[derive(Resource)]
@@ -287,6 +338,7 @@ pub struct ServerMetrics {
     pub last_pos: Vec<Vec3>,
 
     pub loss: Vec<u8>,
+    pub counter_schedule: u8,
     
 }
 impl Default for ServerMetrics {
@@ -304,6 +356,7 @@ impl Default for ServerMetrics {
             last_pos: vec![Vec3::ZERO; 4],
 
             loss: vec![0; 4],
+            counter_schedule: 0,
         }
     }
 }
@@ -321,7 +374,7 @@ fn connection_health(
 
     for i in 1..(sm.player_count as usize) {
         if sm.seq[i] == sm.last[i] && sm.packets[i] != 0 {
-            info!("Dupe Packet for {}: Seq {}", i, sm.seq[i]);
+            //info!("Dupe Packet for {}: Seq {}", i, sm.seq[i]);
         } else if sm.last[i] == 255 && sm.seq[i] == 0 { 
 
         } else if (sm.last[i] == 255 && sm.seq[i] != 0) || (sm.last[i] + 1 != sm.seq[i]) {
@@ -336,7 +389,7 @@ fn connection_health(
             if sm.packets[i] >= dif as u8 {
 
             } else {
-                info!("Lost Packet(s) for {}: Last {}, Seq {}", i, sm.last[i], sm.seq[i]);
+                //info!("Lost Packet(s) for {}: Last {}, Seq {}", i, sm.last[i], sm.seq[i]);
             }
         } 
 
@@ -348,7 +401,7 @@ fn connection_health(
             sm.loss[i] = 0;
         }
 
-        if sm.loss[i] >= 5 {
+        /*if sm.loss[i] >= 10 {
             info!("Player {} missed {} packets!", i, sm.loss[i]);
             for (mut control, mut trans) in &mut p_net {
                 if control.player_id == i as u8 {
@@ -358,10 +411,26 @@ fn connection_health(
                     control.rollback = true;
                 }
             }
+        }*/
+
+        if sm.counter_schedule >= 60 {
+            for (mut control, mut trans) in &mut p_net {
+                if control.player_id == i as u8 {
+                    sm.last_pos[i] = trans.translation;
+                    sm.last_conf_seq[i] = sm.last[i];
+                    control.rollback = true;
+                }
+            }
         }
 
         sm.last[i] = sm.seq[i];
     }
+
+    /*//Status Report
+    info!("Status:\n");
+    for (mut control, mut trans) in &mut p_net {
+        info!("Player {}: {}\n", control.player_id, control.rollback);
+    }*/
 
     //Reset
     sm.packets_sent = 0;

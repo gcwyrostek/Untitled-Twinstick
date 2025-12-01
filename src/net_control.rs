@@ -155,7 +155,7 @@ impl NetControl {
         let out_y = self.get_pos_y();
         out_pack[0] = op;
         //I'm packing p_shot and rollback into the player_id byte and no one can stop me
-        out_pack[1] = ((self.rollback as u8) << 7) + ((self.net_input & 3) << 5) + pid;
+        out_pack[1] = ((self.rollback as u8) << 7) + ((self.net_input & 2) << 5) + pid;
         out_pack[2..6].copy_from_slice(&out_x);
         out_pack[6..10].copy_from_slice(&out_y);
         out_pack[10] = self.net_angle;
