@@ -10,7 +10,6 @@ use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
-use crate::light_manager::Lights;
 use crate::collectible::PlayerInventory;
 use std::collections::HashMap;
 use std::collections::VecDeque;
