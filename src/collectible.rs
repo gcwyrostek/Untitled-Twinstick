@@ -1,4 +1,6 @@
 use crate::{GameState, components::Health, player::Player};
+use crate::{components::KinematicCollider, player_material::PlayerBaseMaterial, components::LightSource, light_manager::Lights};
+use bevy::{math::bounding::Aabb2d};
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -112,7 +114,13 @@ impl Plugin for CollectiblePlugin {
     }
 }
 
-pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_collectibles(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<PlayerBaseMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    lights: Res<Lights>,
+) {
     // Spawn some revive kits
     /*for i in 0..3 {
         commands.spawn((
@@ -258,8 +266,27 @@ pub fn setup_collectibles(mut commands: Commands, asset_server: Res<AssetServer>
                 // Ammo
                 1 => {
         commands.spawn((
-                        Sprite::from_image(asset_server.load("textures/bullet.png")),
-                        Transform::from_xyz(pos_x, pos_y, z).with_scale(Vec3::splat(0.6)),
+                Mesh2d(meshes.add(Rectangle::default())),
+                MeshMaterial2d(materials.add(PlayerBaseMaterial {
+                    color: LinearRgba::BLUE,
+                    texture: Some(asset_server.load("textures/ammo_crate_albedo.png")),
+                    lighting: crate::player_material::Lighting {
+                    ambient_reflection_coefficient: 0.0,
+                    ambient_light_intensity: 0.0,
+                    diffuse_reflection_coefficient: 1.0,
+                    shininess: 140.0,
+                    },
+                    lights: lights.lights,
+                    normal: Some(asset_server.load("textures/ammo_crate_normal.png")),
+                    mesh_rotation: 0.0,
+                    })),
+                KinematicCollider {
+                    shape: Aabb2d {
+                        min: Vec2 { x: 0., y: 0. },
+                        max: Vec2 { x: 64., y: 64. },
+                    },
+                },
+                        Transform::from_xyz(pos_x, pos_y, z).with_scale(Vec3::splat(64.)),
             Collectible {
                             collectible_type: CollectibleType::Ammo(30),
                             amount: 30,

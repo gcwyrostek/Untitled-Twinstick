@@ -32,11 +32,11 @@ impl Plugin for PlayerPlugin {
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
             )
-            .add_systems(
+            /* .add_systems(
                 Update,
                 drain_battery.run_if(in_state(GameState::Playing)),
                 
-            )
+            )*/
             .add_systems(
             Update,
             player_movement_from_history
