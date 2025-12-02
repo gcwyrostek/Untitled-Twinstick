@@ -3,6 +3,7 @@ use crate::{
     player::Player,
     collectible::PlayerInventory,
     enemy::Enemy,
+    components::Health,
 };
 use bevy::prelude::*;
 use bevy::time::Stopwatch;

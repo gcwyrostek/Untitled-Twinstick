@@ -1,4 +1,8 @@
 use crate::collectible::PlayerInventory;
+use crate::components::Health;
+use crate::player::Player;
+use crate::net_control::NetControl;
+use crate::net_control::PlayerType;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -10,6 +14,7 @@ pub struct ReviveKitCounter;
 pub fn setup_revive_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    players: Query<(Entity, &Health), With<Player>>,
     inventory: Res<PlayerInventory>,
 ) {
     // Root node for the revive kit UI (top-right corner)
@@ -67,21 +72,25 @@ pub fn setup_revive_ui(
 
 
 pub fn update_revive_ui(
-    inventory: Res<PlayerInventory>,
-    mut query: Query<&mut Visibility, With<ReviveKitUI>>,
+    players: Query<(&NetControl, &PlayerInventory), With<Player>>,
+    mut query_vis: Query<&mut Visibility, With<ReviveKitUI>>,
     mut counter_q: Query<&mut Text, With<ReviveKitCounter>>,
 ) {
-    // Show or hide UI depending on revive kits
-    if let Ok(mut visibility) = query.single_mut() {
-        *visibility = if inventory.revive_kits > 0 {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
-        };
-    }
+    // find local player's inventory
+    let local_inv = players.iter().find(|(netcontrol, _inv)| netcontrol.player_type == PlayerType::Local).map(|(_nc, inv)| inv);
 
-    // Update counter text
-    if let Ok(mut text) = counter_q.single_mut() {
-        *text = Text::new(format!("x{}", inventory.revive_kits));
+    if let Some(inv) = local_inv {
+        
+        if let Ok(mut visibility) = query_vis.single_mut() {
+            *visibility = if inv.revive_kits > 0 { Visibility::Visible } else { Visibility::Hidden };
+        }
+        if let Ok(mut text) = counter_q.single_mut() {
+            *text = Text::new(format!("x{}", inv.revive_kits));
+        }
+    } else {
+        // no local player, hide UI
+        if let Ok(mut visibility) = query_vis.single_mut() {
+            *visibility = Visibility::Hidden;
+        }
     }
 }

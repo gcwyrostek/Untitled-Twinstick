@@ -42,7 +42,7 @@ impl Plugin for PickupPlugin {
             .add_systems(Startup, spawn_revive_kit)
             .add_systems(Startup, spawn_battery)
             .add_systems(Update, battery_pickup_system)
-            .add_systems(Update, (pickup_system, attach_flashlight_to_player));
+            .add_systems(Update, (pickup_system, attach_flashlight_to_player,));
     }
 }
 
@@ -113,22 +113,24 @@ fn pickup_system(
     mut ammo_writer: EventWriter<AmmoPickupEvent>,
     mut battery_writer: EventWriter<BatteryPickupEvent>,
     mut revive_writer: EventWriter<ReviveKitPickupEvent>,
-    mut player_q: Query<(&Transform, Option<Mut<Health>>, &mut Player), With<Player>>,
+    // For each player: transform, optional health, player component, and inventory (mut)
+    mut player_q: Query<
+        (Entity, &Transform, Option<Mut<Health>>, &mut Player, &mut PlayerInventory),
+        (With<Player>, Without<crate::components::Dead>)
+    >,
     // Old collectibles from components.rs
     old_collectibles_q: Query<(Entity, &Transform, &OldCollectible)>,
     // New collectibles from collectible.rs
     new_collectibles_q: Query<(Entity, &Transform, &NewCollectible)>,
-    mut inventory: ResMut<PlayerInventory>,
+    // dead players query for revival
+    mut dead_players_q: Query<
+        (Entity, &Transform, &mut Health),
+        With<crate::components::Dead>
+    >,
 ) {
-    // single_mut is the non-deprecated call
-    /*let (player_tf, mut player_health_opt, mut player) = match player_q.single_mut() {
-        Ok(v) => v,
-        Err(_) => return,
-    };*/
-
-    for (player_tf, mut player_health_opt, mut player) in player_q {
-
-        // Handle old collectible system items (components.rs)
+    // iterate through current players
+    for (player_entity, player_tf, mut player_health_opt, mut player, mut inventory) in player_q.iter_mut() {
+        // Old collectibles
         for (entity, item_tf, col) in old_collectibles_q.iter() {
             if player_tf.translation.distance(item_tf.translation) > PICKUP_RADIUS {
                 continue;
@@ -140,70 +142,84 @@ fn pickup_system(
                     if let Some(h) = player_health_opt.as_deref_mut() {
                         h.heal(col.amount.max(0));
                     }
+                    commands.entity(entity).despawn();
                 }
                 OldCollectibleKind::Ammo => {
                     let added = inventory.add_to_reserve(col.amount.max(0));
                     if added > 0 {
                         ammo_writer.write(AmmoPickupEvent { amount: added });
+                        commands.entity(entity).despawn();
                     }
                 }
                 OldCollectibleKind::Battery => {
-                    battery_writer.write(BatteryPickupEvent {
-                        amount: col.amount.max(0),
-                    });
+                    battery_writer.write(BatteryPickupEvent { amount: col.amount.max(0) });
+                    commands.entity(entity).despawn();
                 }
                 OldCollectibleKind::ReviveKit => {
                     if inventory.revive_kits < inventory.max_revive_kits {
                         inventory.revive_kits += 1;
                         revive_writer.write(ReviveKitPickupEvent);
                         commands.entity(entity).despawn();
-                        // println!("Collected a revive kit! Total: {}", inventory.revive_kits);
-
+                        info!("Collected a revive kit! Total: {}", inventory.revive_kits);
                     }
                 }
             }
-
-            //commands.entity(entity).despawn();
         }
 
-        // Handle new collectible system items (collectible.rs)
+        // New collectibles
         for (entity, item_tf, col) in new_collectibles_q.iter() {
             if player_tf.translation.distance(item_tf.translation) > PICKUP_RADIUS {
                 continue;
             }
-
             match col.collectible_type {
                 NewCollectibleType::Health(amount) => {
                     if let Some(h) = player_health_opt.as_deref_mut() {
                         h.heal(amount.max(0));
                     }
+                    commands.entity(entity).despawn();
                 }
                 NewCollectibleType::Ammo(amount) => {
                     let added = inventory.add_to_reserve(amount.max(0));
                     if added > 0 {
                         ammo_writer.write(AmmoPickupEvent { amount: added });
+                        commands.entity(entity).despawn();
                     }
                 }
                 NewCollectibleType::Battery(amount) => {
-                    battery_writer.write(BatteryPickupEvent {
-                        amount: amount.max(500),
-                    });
+                    battery_writer.write(BatteryPickupEvent { amount: amount.max(500) });
+                    commands.entity(entity).despawn();
                 }
                 NewCollectibleType::ReviveKit => {
                     if inventory.revive_kits < inventory.max_revive_kits {
                         inventory.revive_kits += 1;
                         revive_writer.write(ReviveKitPickupEvent);
                         commands.entity(entity).despawn();
-                        // println!("Collected a revive kit! Total: {}", inventory.revive_kits);
-
+                        info!("Collected a revive kit! Total: {}", inventory.revive_kits);
                     }
                 }
                 NewCollectibleType::Flashlight => {
-                    pickup_flashlight(&mut inventory);
+                    if !inventory.has_flashlight {
+                        inventory.has_flashlight = true;
+                    }
+                    commands.entity(entity).despawn();
                 }
             }
+        }
 
-            //commands.entity(entity).despawn();
+        // Revive any dead player we walk over
+        let mut revived = Vec::new();
+        for (dead_ent, dead_tf, mut dead_health) in dead_players_q.iter_mut() {
+            if player_tf.translation.distance(dead_tf.translation) <= PICKUP_RADIUS {
+                // ensure not reviving ourselves, but other players only
+                if inventory.revive_kits > 0 {
+                    // consume kit, restore health, remove Dead component
+                    inventory.revive_kits -= 1;
+                    dead_health.current = dead_health.max;
+                    commands.entity(dead_ent).remove::<crate::components::Dead>();
+                    info!("Player {:?} revived by {:?}. Kits left: {}", dead_ent, player_entity, inventory.revive_kits);
+                    revived.push(dead_ent);
+                }
+            }
         }
     }
 }
@@ -215,12 +231,11 @@ struct FlashlightHeld;
 fn attach_flashlight_to_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    inventory: Res<PlayerInventory>,
-    players_q: Query<(Entity, Option<&Children>, &Transform), With<Player>>,
+    players: Query<(Entity, &PlayerInventory, Option<&Children>, &Transform), With<Player>>,
     flashlight_q: Query<Entity, With<FlashlightHeld>>,
 ) {
     // If no change in inventory, still ensure presence/absence per player
-    for (player_entity, children_opt, player_tf) in players_q.iter() {
+    for (player_entity, inventory, children_opt, player_tf) in players.iter() {
         let mut has_child_flashlight = false;
         if let Some(children) = children_opt {
             for child in children.iter() {
@@ -251,7 +266,8 @@ fn attach_flashlight_to_player(
                     cb.spawn((
                         Sprite::from_image(asset_server.load("textures/flashlight.png")),
                         // Position slightly to the right of the player, compensate for parent scale
-                        Transform::from_xyz(offset_x, 0.0, 1.0).with_scale(Vec3::new(sx, sy, 1.0)),
+                        Transform::from_xyz(offset_x, 0.0, 1.0)
+                            .with_scale(Vec3::new(sx, sy, 1.0)),
                         FlashlightHeld,
                     ));
                 });
@@ -259,9 +275,9 @@ fn attach_flashlight_to_player(
         } else {
             // Remove if present
             if let Some(children) = children_opt {
-                for child in children.iter() {
-                    if flashlight_q.get(child).is_ok() {
-                        commands.entity(child).despawn();
+                for child in children {
+                    if flashlight_q.get(*child).is_ok() {
+                        commands.entity(*child).despawn();
                     }
                 }
             }

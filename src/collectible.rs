@@ -18,7 +18,7 @@ pub enum CollectibleType {
     Flashlight,   // flashlight
 }
 
-#[derive(Resource)]
+#[derive(Resource, Component, Debug, Clone)]
 pub struct PlayerInventory {
     pub revive_kits: i32,
     pub magazine: i32,      // Change this to adjust the current magazine size.
@@ -373,7 +373,7 @@ pub fn can_shoot(inventory: &Res<PlayerInventory>) -> bool {
 }
 
 // Helper function to grant flashlight
-pub fn pickup_flashlight(inventory: &mut ResMut<PlayerInventory>) {
+pub fn pickup_flashlight(mut players: Query<(Entity, &mut Health), With<Player>>, inventory: &mut ResMut<PlayerInventory>) {
     if !inventory.has_flashlight {
         inventory.has_flashlight = true;
         // println!("Picked up flashlight!");

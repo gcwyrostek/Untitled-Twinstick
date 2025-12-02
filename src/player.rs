@@ -4,6 +4,7 @@ use crate::{
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
     net_control::NetControl, net_control::PlayerType, player_material::PlayerBaseMaterial,
     collisions::find_mtv, server::InputHistory, server::RollbackDetection, wall::Door,
+    light_manager::Lights,
 };
 use bevy::math::bounding::Aabb2d;
 use bevy::math::bounding::IntersectsVolume;
@@ -11,7 +12,6 @@ use bevy::prelude::*;
 use bevy::time::Timer;
 use bevy::time::TimerMode;
 use bevy::window::PrimaryWindow;
-use crate::light_manager::Lights;
 use crate::collectible::PlayerInventory;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -60,6 +60,12 @@ fn rollback_from_history(roll: Res<RollbackDetection>) -> bool {
 pub struct Player {
     pub charge: i32,
     pub flashlight: Option<Entity>,
+}
+
+//Local player resource
+#[derive(Resource)]
+pub struct LocalPlayer {
+    pub entity: Entity,
 }
 
 impl Player {
@@ -168,6 +174,7 @@ pub fn setup_player(
             Player { charge: 500, flashlight: None },
             Sanity { current: 100.0, draining: false },
             Health::new(MAX_HEALTH),
+            PlayerInventory::default(),
             KinematicCollider {
                 shape: Aabb2d {
                     min: Vec2 { x: 0., y: 0. },
@@ -177,6 +184,13 @@ pub fn setup_player(
             FlowMap::default(),
             InputHistory::default(),
         ));
+
+        // Identify the local player and store it
+        if i.1.get_type() == PlayerType::Local {
+            commands.insert_resource(LocalPlayer { entity: i.0 });
+            info!("Registered LocalPlayer: {:?}", i.0);
+        }
+
     }
 }
 
@@ -581,12 +595,19 @@ pub fn player_damage(
     mut commands: Commands,
 ) {
     for damage_event in events.read() {
-        for (player, mut player_health) in players.iter_mut() {
-            if damage_event.target == player {
+        info!(
+            "EMIT_DAMAGE: target={:?}, amount={}",
+            damage_event.target,
+            damage_event.amount
+        );
+        for (player_entity, mut player_health) in players.iter_mut() {
+            if damage_event.target == player_entity {
                 player_health.damage(damage_event.amount);
                 if player_health.is_dead() {
-                    next_state.set(GameState::GameOver);
-                    commands.entity(player).despawn();
+                    // Mark as dead instead of despawning
+                    player_health.current = 0;
+                    commands.entity(player_entity).insert(crate::components::Dead);
+                    info!("Player {:?} died", player_entity);
                 }
             }
         }
@@ -615,18 +636,3 @@ pub fn drain_battery(
     }
 }
 
-pub fn use_revive_kit(
-    input: Res<ButtonInput<KeyCode>>,
-    mut inventory: ResMut<PlayerInventory>,
-    mut players: Query<(Entity, &mut Health), With<Player>>,
-) {
-    if input.just_pressed(KeyCode::KeyR) {
-        for (player_entity, mut player_health) in players.iter_mut() {
-            if player_health.is_dead() && inventory.revive_kits > 0 {
-                inventory.revive_kits -= 1;
-                player_health.current = player_health.max;
-                info!("Used a revive kit on player {:?}! Health restored.", player_entity);
-            }
-        }
-    }
-}

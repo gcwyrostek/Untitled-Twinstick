@@ -1,8 +1,8 @@
 use crate::{GameState, player::Player};
 use crate::inventory_ui::{setup_revive_ui, update_revive_ui};
-use crate::player::{use_revive_kit};
 use crate::{
     collectible::PlayerInventory, components::Health, events::DamagePlayerEvent,
+    net_control::NetControl, player::LocalPlayer, player::player_damage,
 };
 use bevy::prelude::*;
 
@@ -11,11 +11,11 @@ impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(OnExit(GameState::Playing), cleanup_ui)
-            .add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, update_health_ui.run_if(in_state(GameState::Playing)))
+            //.add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::Playing), setup_revive_ui)
             .add_systems(Update, update_revive_ui.run_if(in_state(GameState::Playing)))
-            .add_systems(Update, use_revive_kit.run_if(in_state(GameState::Playing)))
-            .add_systems(Update, (player_damage, update_ammo_ui).run_if(in_state(GameState::Playing)));
+            .add_systems(Update, (player_damage, update_ammo_ui).0.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -103,25 +103,44 @@ pub fn setup_ui(
         });
 }
 
-pub fn player_damage(
-    mut events: EventReader<DamagePlayerEvent>,
+pub fn update_health_ui(
+    local_player: Res<LocalPlayer>,
+    health_query: Query<&Health>,
     mut health_bar_q: Query<&mut Node, With<HealthBar>>,
-    players: Query<(Entity, &Health), With<Player>>,
 ) {
-    let Ok(mut node) = health_bar_q.single_mut() else {
+    let Ok(mut node) = health_bar_q.get_single_mut() else { return; };
+    let Ok(health) = health_query.get(local_player.entity) else { return; };
+
+    // Update the health bar based on current health ratio
+    let ratio = (health.current.max(0) as f32 / health.max as f32).clamp(0.0, 1.0);
+    node.height = Val::Px(HEALTH_BAR_H * ratio);
+}
+
+/*
+pub fn player_damage(
+    local_player: Res<LocalPlayer>,
+    mut events: EventReader<DamageEvent>,
+    mut health_bar_q: Query<&mut Node, With<HealthBar>>,
+    players: Query<(Entity, &Health)>,
+) {
+    let Ok(mut node) = health_bar_q.get_single_mut() else {
         return;
     };
 
-    for damage_event in events.read() {
-        for (player_entity, player_health) in players.iter() {
-            if damage_event.target == player_entity {
-                let fraction =
-                    (player_health.current as f32 / player_health.max as f32).clamp(0.0, 1.0);
-                node.height = Val::Px(HEALTH_BAR_H * fraction);
-            }
+    for ev in events.read() {
+        // Only update UI if the local player was the damage target
+        if ev.target != local_player.entity {
+            continue;
+        }
+
+        if let Ok((_, health)) = players.get(ev.target) {
+            let ratio = health.current.max(0) as f32 / health.max as f32;
+            node.height = Val::Percent(ratio * 100.0);
         }
     }
 }
+*/
+
 
 fn cleanup_ui(
     mut commands: Commands,
