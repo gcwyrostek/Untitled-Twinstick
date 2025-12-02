@@ -12,9 +12,9 @@ const NORMAL_SPEED: f32 = 100.;
 const STRONG_SPEED: f32 = 100.;
 const FAST_SPEED: f32 = 600.;
 
-const NORMAL_HEALTH: i32 = 100;
-const STRONG_HEALTH: i32 = 500;
-const FAST_HEALTH: i32 = 50;
+const NORMAL_HEALTH: i32 = 5;
+const STRONG_HEALTH: i32 = 10;
+const FAST_HEALTH: i32 = 3;
 
 const RADIUS: f32 = 50.;
 const ATTACK_RADIUS: f32 = 100.;
