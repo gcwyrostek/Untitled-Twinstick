@@ -18,7 +18,7 @@ pub enum CollectibleType {
     Flashlight,   // flashlight
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerInventory {
     pub revive_kits: i32,
     pub magazine: i32,      // Change this to adjust the current magazine size.
@@ -102,6 +102,17 @@ impl PlayerInventory {
         }
 
         added
+    }
+
+    pub fn inv_to_bytes(&mut self) -> [u8;2] {
+        let byte1:u8 = ((self.revive_kits as u8) << 7) + (self.magazine as u8);
+        return [byte1, self.reserve as u8];
+    }
+
+    pub fn inv_from_bytes(&mut self, inp:[u8;2]) {
+        self.reserve = inp[1] as i32;
+        self.revive_kits = (inp[0] & 128) as i32;
+        self.magazine = (inp[0] & 127) as i32;
     }
 }
 

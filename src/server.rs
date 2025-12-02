@@ -1,6 +1,6 @@
 use crate::{
     AssignedType, GameState, LogicType, net_control::NetControl, net_control::PlayerType, net_control::Local, net_control::Network,
-    player::Player, player::Velocity, player, enemy::Enemy, enemy::Awake,
+    player::Player, player::Velocity, player, enemy::Enemy, enemy::Awake, collectible::PlayerInventory,
 };
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
@@ -108,7 +108,7 @@ fn server_run(
     mut roll: ResMut<RollbackDetection>,
 ) {
     let mut buf = [0; 257];
-    for l in 1..8 {
+    for l in 1..20 {
         match socket.socket.recv_from(&mut buf) {
             Ok((amt, src)) => {
                 //Server Receives Join Packet
@@ -209,7 +209,7 @@ fn send_players(
 
 fn send_player_update(
     socket: ResMut<'_, SocketResource>,
-    mut p_net: Query<(&mut NetControl, &mut InputHistory), With<NetControl>>,
+    mut p_net: Query<(&mut NetControl, &mut InputHistory, &mut PlayerInventory), With<NetControl>>,
     enemy_list: Query<(&Enemy, &Transform), (With<Enemy>, With<Awake>)>,
     mut sm: ResMut<ServerMetrics>,
 ) {
@@ -230,10 +230,10 @@ fn send_player_update(
         }
     }
 
-    for (i, history) in p_net.iter() {
+    for (i, history, inv) in p_net.iter() {
         if i.get_type() == PlayerType::Network {
             sm.packets_sent += 1;
-            for (j, loc_history) in p_net.iter() { 
+            for (j, loc_history, inv) in p_net.iter() { 
 
                 /*if i.player_id == j.player_id {
                     if sm.counter_schedule >= 60 {
@@ -270,13 +270,14 @@ fn send_player_update(
                         .send_to(&out, i.get_addr().unwrap())
                         .expect("couldn't send data");
                 }
+
             }
 
             //Send enemy info
             socket
-                    .socket
-                    .send_to(&en_out, i.get_addr().unwrap())
-                    .expect("couldn't send data");
+                .socket
+                .send_to(&en_out, i.get_addr().unwrap())
+                .expect("couldn't send data");
         }
     }
 
@@ -286,10 +287,22 @@ fn send_player_update(
         sm.counter_schedule += 1;
     }
 
-    for (mut i, mut history) in p_net.iter_mut() {
+    for (mut i, mut history, mut inv) in p_net.iter_mut() {
+            //Send player inventory  
+            let mut out = [0;4];
+            out[0] = 5;
+            out[1] = i.player_id;
+            let out_inv = inv.inv_to_bytes();
+            out[2] = out_inv[0];
+            out[3] = out_inv[1];
+            socket
+                .socket
+                .send_to(&out, i.get_addr().unwrap())
+                .expect("couldn't send data");
+
         if roll_check[i.player_id as usize] {
             //i.rollback = false;
-            history.usable = false;
+            history.usable = false;                
         }
     }
 }
@@ -330,7 +343,7 @@ impl InputHistory {
     pub fn history_used(&mut self) {
         self.usable = false;
         self.use_count += 1;
-        info!("Disabled. Count = {}", self.use_count);
+        //info!("Disabled. Count = {}", self.use_count);
     }
 }
 

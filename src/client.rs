@@ -106,7 +106,7 @@ fn client_run(
     mut commands: Commands,
     input: Res<ButtonInput<KeyCode>>,
     socket: ResMut<'_, SocketResource>,
-    mut p_loc: Query<(&mut NetControl, &mut Transform), With<NetControl>>,
+    mut p_loc: Query<(&mut NetControl, &mut Transform, &mut PlayerInventory), With<NetControl>>,
     mut enemy: Query<(&mut Enemy, &mut Transform), (With <Enemy>, Without<NetControl>)>,
     mut next_state: ResMut<NextState<GameState>>,
     mut cm: ResMut<ClientMetrics>,
@@ -114,7 +114,7 @@ fn client_run(
     let mut buf = [0; 321];
     //Fake packet loss option
     if !input.pressed(KeyCode::KeyP) {
-        for l in 1..8 {
+        for l in 1..20 {
             match socket.socket.recv_from(&mut buf) {
                 Ok((amt, src)) => {
                     //info!("{:?} + {:?} + {:?}", amt, src, buf);
@@ -151,7 +151,7 @@ fn client_run(
                         1 => {
                             cm.rtt = cm.sw.elapsed();
                             //info!("Ping: {:?}", cm.rtt);
-                            for (mut control, mut trans) in p_loc.iter_mut() {
+                            for (mut control, mut trans, mut inv) in p_loc.iter_mut() {
                                 //The first check hard limits us to 4 players (pid 0 to 3) as I started packing shooting into the same byte.
                                 //The second check prevents server from overwriting active player info. Will need to add 'else' to handle rollback system
                                 if control.player_id == (buf[1] & 3) && control.player_type == PlayerType::Network {
@@ -176,7 +176,7 @@ fn client_run(
                         //Request input history
                         3 => {
                             cm.send_history = true;
-                            for (mut control, mut trans) in p_loc.iter_mut() {
+                            for (mut control, mut trans, mut inv) in p_loc.iter_mut() {
                                 if control.player_id == (buf[1] & 3) {
                                     let mut inp_pack = [0; 11];
                                     inp_pack.copy_from_slice(&buf[0..11]);
@@ -214,6 +214,19 @@ fn client_run(
                                         //info!("Enemy {} -> {:?}", enemy.enemy_id, enemy_trans.translation);
                                     }
                                     None => {}
+                                }
+                            }
+                        }
+
+                        //Inventory Packet update
+                        5 => {
+                            for (mut control, mut trans, mut inv) in p_loc.iter_mut() {
+                                if control.player_id == buf[1] {
+                                    //Update Inventory
+                                    let mut inv_pack:[u8;2] = [0;2];
+                                    inv_pack[0]=buf[2];
+                                    inv_pack[1]=buf[3];
+                                    inv.inv_from_bytes(inv_pack);
                                 }
                             }
                         }

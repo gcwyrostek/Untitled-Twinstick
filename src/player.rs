@@ -188,7 +188,7 @@ pub fn setup_player(
         // Identify the local player and store it
         if i.1.get_type() == PlayerType::Local {
             commands.insert_resource(LocalPlayer { entity: i.0 });
-            info!("Registered LocalPlayer: {:?}", i.0);
+            //info!("Registered LocalPlayer: {:?}", i.0);
         }
 
     }
@@ -305,7 +305,7 @@ pub fn player_movement(
         } else {
 
             if control.get_type() == PlayerType::Local {
-                info!("Rollback {}: {:?}", control.player_id, control.get_p_pos());
+                //info!("Rollback {}: {:?}", control.player_id, control.get_p_pos());
             }
             
             transform.translation = control.get_p_pos();
@@ -372,7 +372,7 @@ pub fn player_movement(
         transform.translation.y = transform.translation.y.round();
         
         if control.get_type() == PlayerType::Local && !control.host && input.pressed(KeyCode::KeyP) {
-            info!("Steps: {:?}", transform.translation);
+            //info!("Steps: {:?}", transform.translation);
         }
 
         //Sets position in NetControl
@@ -396,7 +396,7 @@ pub fn player_movement_from_history(
         if control.player_id == hist.player && hist.usable {
             hist.history_used();
 
-            info!("hist.last_pos -> {:?}", hist.last_pos);
+            //info!("hist.last_pos -> {:?}", hist.last_pos);
 
             //Reset player position before rollback
             let mut trans_temp = hist.last_pos;
@@ -502,7 +502,7 @@ pub fn player_movement_from_history(
                 //Rounds position to integers
                 trans_temp.x = trans_temp.x.round();
                 trans_temp.y = trans_temp.y.round();
-                info!("History Traceback Iter: {:?}, Seq: {:?} -> {:?}", counter, i, trans_temp);
+                //info!("History Traceback Iter: {:?}, Seq: {:?} -> {:?}", counter, i, trans_temp);
 
                 //Sets position in NetControl
                 //control.set_pos_x(trans_temp.x);
@@ -595,11 +595,11 @@ pub fn player_damage(
     mut commands: Commands,
 ) {
     for damage_event in events.read() {
-        info!(
+        /*info!(
             "EMIT_DAMAGE: target={:?}, amount={}",
             damage_event.target,
             damage_event.amount
-        );
+        );*/
         for (player_entity, mut player_health) in players.iter_mut() {
             if damage_event.target == player_entity {
                 player_health.damage(damage_event.amount);
@@ -607,7 +607,7 @@ pub fn player_damage(
                     // Mark as dead instead of despawning
                     player_health.current = 0;
                     commands.entity(player_entity).insert(crate::components::Dead);
-                    info!("Player {:?} died", player_entity);
+                    //info!("Player {:?} died", player_entity);
                 }
             }
         }
