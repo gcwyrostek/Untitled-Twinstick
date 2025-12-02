@@ -1,3 +1,4 @@
+use crate::components::Sanity;
 use crate::{
     GameState, components::FlowMap, components::Health, components::KinematicCollider,
     components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
@@ -165,6 +166,7 @@ pub fn setup_player(
             Velocity::new(),
             FireCooldown(Timer::from_seconds(0.2, TimerMode::Repeating)),
             Player { charge: 500, flashlight: None },
+            Sanity { current: 100.0, draining: false },
             Health::new(MAX_HEALTH),
             KinematicCollider {
                 shape: Aabb2d {
@@ -603,12 +605,7 @@ pub fn drain_battery(
     for mut player in players.iter_mut() {
         // Drain battery
         let drain_rate = 0.5;
-        if player.charge <= 0 {
-            //instant_kill();
-            // kill them
-        }
         player.charge = (player.charge as f32 - drain_rate * delta).max(0.0) as i32;
-
         // Update flashlight range.
         if let Some(flashlight_entity) = player.flashlight {
             if let Ok(mut light) = lights.get_mut(flashlight_entity) {

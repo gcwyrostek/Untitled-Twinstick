@@ -99,3 +99,9 @@ impl LightSource {
         }
     }
 }
+
+#[derive(Component)]
+pub struct Sanity {
+    pub current: f32,
+    pub draining: bool,
+}

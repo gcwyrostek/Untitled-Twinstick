@@ -42,6 +42,7 @@ mod net_control;
 mod slideshow;
 mod deferred_lite_simple;
 mod example_scene;
+mod sanity;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -140,6 +141,7 @@ fn main() {
             lobby::LobbyPlugin,
             server::ServerPlugin,
             client::ClientPlugin,
+            sanity::SanityPlugin,
         ))
         .add_plugins(example_scene::ExampleScenePlugin)
         .add_event::<events::DamagePlayerEvent>()
