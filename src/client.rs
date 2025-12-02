@@ -237,12 +237,11 @@ pub fn input_converter(
     input: Res<ButtonInput<KeyCode>>,
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     socket: ResMut<SocketResource>,
-    mut pl_cont: Query<(&mut NetControl, &mut Transform), (With<NetControl>, With<Local>)>,
-    mut inventory: ResMut<PlayerInventory>,
+    mut pl_cont: Query<(&mut NetControl, &mut Transform, &PlayerInventory), (With<NetControl>, With<Local>)>,
     mut cm: ResMut<ClientMetrics>,
 )   {
         let mut input_result: u8 = 0;
-        let (mut player, mut transform) = pl_cont.single_mut().unwrap();
+        let (mut player, mut transform, inventory) = pl_cont.single_mut().expect("Client Player not found");
         //WASD00L0
         if input.pressed(KeyCode::KeyW) {
             input_result += 128;

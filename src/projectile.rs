@@ -52,15 +52,14 @@ pub fn projectile_inputs(
     mouse_button_io: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut player_q: Query<(&Transform, &mut FireCooldown, &mut NetControl), With<Player>>,
+    mut player_q: Query<(&Transform, &mut FireCooldown, &mut NetControl, &mut PlayerInventory), With<Player>>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
     mut pos_history: ResMut<MouseMemory>,
-    mut inventory: ResMut<PlayerInventory>,
 ) {
     let shooting = mouse_button_io.pressed(MouseButton::Left);
 
-    for (transform, mut cooldown, mut netcontrol) in player_q {
+    for (transform, mut cooldown, mut netcontrol, mut inventory) in player_q.iter_mut() {
         let projectile_pos = transform.translation;
         let dir = transform.rotation.mul_vec3(Vec3::Y).truncate();
 
