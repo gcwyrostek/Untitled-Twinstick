@@ -301,9 +301,23 @@ pub fn setup_collectibles(
                 },
                 // Battery
                 5 => {
-        commands.spawn((
-            Sprite::from_image(asset_server.load("textures/battery.png")),
-                        Transform::from_xyz(pos_x, pos_y, z).with_scale(Vec3::splat(1.8)),
+                    commands.spawn((
+                        Mesh2d(meshes.add(Rectangle::default())),
+                        MeshMaterial2d(materials.add(PlayerBaseMaterial {
+                            color: LinearRgba::BLUE,
+                            texture: Some(asset_server.load("textures/battery_albedo.png")),
+                            lighting: crate::player_material::Lighting {
+                                ambient_reflection_coefficient: 0.1,
+                                ambient_light_intensity: 0.1,
+                                diffuse_reflection_coefficient: 1.0,
+                                shininess: 40.0,
+                            },
+                            lights: lights.lights,
+                            normal: Some(asset_server.load("textures/battery_normal.png")),
+                            mesh_rotation: 0.0,
+                            sdf_texture: Some(sdf_texture.texture.clone()),
+                        })),
+                        Transform::from_xyz(pos_x, pos_y, z).with_scale(Vec3::splat(64.)),
                         Collectible {
                             collectible_type: CollectibleType::Battery(10),
                             amount: 10,
