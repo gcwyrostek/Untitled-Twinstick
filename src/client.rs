@@ -9,6 +9,7 @@ use bevy::time::Stopwatch;
 use std::time::Duration;
 use std::net::UdpSocket;
 use std::collections::HashMap;
+use std::env;
 
 const IP_CONST: &str = "127.0.0.1:";
 
@@ -82,12 +83,21 @@ fn client_connect(
     mut cm: ResMut<ClientMetrics>,
 ) {
     info!("In client connect, Starting Timer");
+    let args: Vec<String> = env::args().collect();
+    let mut newIP = "".to_string();;
+    if args.len() > 1 {
+        newIP = args[1].to_owned() + ":2525";
+    }
+    else
+    {
+        newIP = "127.0.0.1:2525".to_string();
+    }
     let mut buf = [0];
     cm.sw.tick(Duration::from_millis(1));
     cm.sw.reset();
     socket
         .socket
-        .send_to(&[255], "127.0.0.1:2525")
+        .send_to(&[255], newIP)
         .expect("couldn't send data");
 }
 
