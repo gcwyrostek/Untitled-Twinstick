@@ -306,7 +306,7 @@ pub fn setup_collectibles(
                         Transform::from_xyz(pos_x, pos_y, z).with_scale(Vec3::splat(0.5)),
             Collectible {
                             collectible_type: CollectibleType::Health(10),
-                            amount: 10,
+                            amount: 50,
             },
         ));
                 },
