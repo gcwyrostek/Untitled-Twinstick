@@ -59,7 +59,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
+            LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
         )
     });
 
@@ -67,7 +67,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
+            LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
         )
     });
 
@@ -75,7 +75,7 @@ pub fn setup_lights(mut commands: Commands) {
         let transform = Transform::from_xyz(0., 0., 0.);
         (
             transform,
-            LightSource::new(transform.translation, 0.0, 500.0, 80, 0.0),
+            LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
         )
     });
 }
