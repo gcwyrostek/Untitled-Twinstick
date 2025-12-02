@@ -15,7 +15,7 @@ impl Plugin for UIPlugin {
             //.add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::Playing), setup_revive_ui)
             .add_systems(Update, update_revive_ui.run_if(in_state(GameState::Playing)))
-            .add_systems(Update, (player_damage, update_ammo_ui).0.run_if(in_state(GameState::Playing)));
+            .add_systems(Update, (player_damage, update_ammo_ui).run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -37,7 +37,6 @@ const HEALTH_BAR_H: f32 = 216.0;
 pub fn setup_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    inventory: Res<PlayerInventory>,
 ) {
     // Root UI node positioned at top-left of the camera
     commands
@@ -79,7 +78,8 @@ pub fn setup_ui(
         });
 
     // Ammo text in the bottom-right corner
-    let ammo_string = format!("{}/{}", inventory.magazine, inventory.reserve);
+    // Initial text can be placeholder or empty until first update
+    let ammo_string = "0/0".to_string();
     commands
         .spawn((
             Node {
@@ -157,12 +157,14 @@ fn cleanup_ui(
 }
 
 fn update_ammo_ui(
-    inventory: Res<PlayerInventory>,
+    local_player: Res<LocalPlayer>,
+    inventory_query: Query<&PlayerInventory>,
     mut query: Query<&mut Text, With<AmmoText>>,
 ) {
-    if !inventory.is_changed() {
-        return;
-    }
+    let Ok(inventory) = inventory_query.get(local_player.entity) else { return; };
+    // if !inventory.is_changed() {
+    //     return;
+    // }
 
     if let Ok(mut text) = query.get_single_mut() {
         *text = Text::new(format!("{}/{}", inventory.magazine, inventory.reserve));

@@ -14,8 +14,6 @@ pub struct ReviveKitCounter;
 pub fn setup_revive_ui(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    players: Query<(Entity, &Health), With<Player>>,
-    inventory: Res<PlayerInventory>,
 ) {
     // Root node for the revive kit UI (top-right corner)
     commands
@@ -49,7 +47,7 @@ pub fn setup_revive_ui(
 
             // Counter text next to icon with some spacing
             parent.spawn((
-                Text::new(format!("x{}", inventory.revive_kits)),
+                Text::new("x0"),
                 TextFont {
                     font_size: 32.0,
                     ..default()
