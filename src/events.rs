@@ -11,3 +11,8 @@ impl DamagePlayerEvent {
         DamagePlayerEvent { target, amount }
     }
 }
+
+#[derive(Event)]
+pub struct SanityDepletedEvent {
+    pub player: Entity,
+}
