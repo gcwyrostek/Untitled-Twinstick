@@ -6,6 +6,7 @@ use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::thread;
+use std::env;
 
 const IP_CONST: &str = "127.0.0.1:2525";
 const MAX_PLAYER: u8 = 4;
@@ -71,8 +72,17 @@ pub fn type_equals_host(game_type: Res<LogicType>) -> bool {
 
 
 fn server_init(mut commands: Commands) {
+    let args: Vec<String> = env::args().collect();
+    let mut newIP = "".to_string();
+    if args.len() > 1 {
+        newIP = args[1].to_owned() + ":2525";
+    }
+    else
+    {
+        newIP = IP_CONST.to_string();
+    }
     commands.insert_resource(SocketResource {
-        socket: UdpSocket::bind(IP_CONST).expect("ERROR"),
+        socket: UdpSocket::bind(newIP).expect("ERROR"),
     });
     commands.insert_resource(ServerMetrics::default());
     commands.spawn((NetControl::new(true, PlayerType::Local, 0, Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2525,)),),
