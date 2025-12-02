@@ -8,6 +8,9 @@ pub struct Health {
     pub current: i32,
 }
 
+#[derive(Component)]
+pub struct Dead;
+
 impl Health {
     pub fn new(max: i32) -> Self {
         Self { max, current: max }
