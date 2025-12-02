@@ -1,7 +1,7 @@
 use crate::components::Sanity;
 use crate::{
     GameState, components::FlowMap, components::Health, components::KinematicCollider,
-    components::LightSource, components::StaticCollider, events::DamagePlayerEvent,
+    components::LightSource, components::StaticCollider, components::Dead, events::DamagePlayerEvent,
     net_control::NetControl, net_control::PlayerType, player_material::PlayerBaseMaterial,
     collisions::find_mtv, server::InputHistory, server::RollbackDetection, wall::Door,
     light_manager::Lights,
@@ -245,7 +245,7 @@ pub fn player_movement(
     input: Res<ButtonInput<KeyCode>>,
     player_net: Query<
         (&mut Transform, &mut Velocity, &mut NetControl, &KinematicCollider, &mut InputHistory),
-        (With<Player>, With<NetControl>),
+        (With<Player>, With<NetControl>, Without<Dead>),
     >,
     statics: Query<(&StaticCollider, &Transform), (Without<KinematicCollider>, Without<Door>)>,
 ) {

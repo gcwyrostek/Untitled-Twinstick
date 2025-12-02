@@ -43,6 +43,7 @@ mod slideshow;
 mod deferred_lite_simple;
 mod example_scene;
 mod sanity;
+mod winloss;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -142,6 +143,7 @@ fn main() {
             server::ServerPlugin,
             client::ClientPlugin,
             sanity::SanityPlugin,
+            winloss::WinLossPlugin,
         ))
         .add_plugins(example_scene::ExampleScenePlugin)
         .add_event::<events::DamagePlayerEvent>()
