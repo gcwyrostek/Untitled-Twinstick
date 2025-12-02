@@ -39,6 +39,7 @@ mod game_over;
 mod lobby;
 mod net_control;
 mod slideshow;
+mod sanity;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
@@ -135,6 +136,7 @@ fn main() {
             lobby::LobbyPlugin,
             server::ServerPlugin,
             client::ClientPlugin,
+            sanity::SanityPlugin,
         ))
         .add_event::<events::DamagePlayerEvent>()
         .run();
