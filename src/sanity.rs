@@ -28,7 +28,7 @@ pub fn sanity_drain_system(
     mut sanity_timers: ResMut<SanityTimers>,
     mut players: Query<(Entity, &NetControl, &Player, &mut Sanity)>,
 ) {
-    const SANITY_DRAIN_RATE: f32 = 5.0; // Drain 5 sanity per second without flashlight
+    const SANITY_DRAIN_RATE: f32 = 0.1; // Drain 5 sanity per second without flashlight
     const SANITY_REGEN_RATE: f32 = 10.0; // Regenerate 10 sanity per second with flashlight
     const MAX_SANITY: f32 = 100.0;
 

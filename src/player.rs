@@ -624,7 +624,7 @@ pub fn drain_battery(
 
     for mut player in players.iter_mut() {
         // Drain battery
-        let drain_rate = 10.0;
+        let drain_rate = 1.0;
         player.charge = (player.charge as f32 - drain_rate * delta).max(0.0) as i32;
         // Update flashlight range.
         if let Some(flashlight_entity) = player.flashlight {
