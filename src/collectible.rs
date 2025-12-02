@@ -120,6 +120,7 @@ pub fn setup_collectibles(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     lights: Res<Lights>,
+    sdf_texture: Res<crate::sdf_shadows::SdfTexture>,
 ) {
     // Spawn some revive kits
     /*for i in 0..3 {
@@ -279,6 +280,7 @@ pub fn setup_collectibles(
                     lights: lights.lights,
                     normal: Some(asset_server.load("textures/ammo_crate_normal.png")),
                     mesh_rotation: 0.0,
+                    sdf_texture: Some(sdf_texture.texture.clone()),
                     })),
                 KinematicCollider {
                     shape: Aabb2d {

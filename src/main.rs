@@ -24,6 +24,7 @@ mod pickup_system;
 mod player;
 mod player_material;
 mod projectile;
+mod sdf_shadows;
 mod server;
 mod tiling;
 mod ui;
@@ -39,13 +40,15 @@ mod game_over;
 mod lobby;
 mod net_control;
 mod slideshow;
+mod deferred_lite_simple;
+mod example_scene;
 mod sanity;
 
 const WIN_W: f32 = 1280.;
 const WIN_H: f32 = 720.;
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum GameState {
+pub enum GameState {
     #[default]
     Menu,
     Playing,
@@ -53,6 +56,7 @@ enum GameState {
     Joining,
     Credits,
     GameOver,
+    ExampleScene,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -125,6 +129,7 @@ fn main() {
         ))
         .add_plugins((
             Material2dPlugin::<player_material::PlayerBaseMaterial>::default(),
+            sdf_shadows::SdfShadowsPlugin,
             slideshow::CreditsPlugin,
             game_over::GameOverPlugin,
             PickupPlugin,
@@ -138,6 +143,7 @@ fn main() {
             client::ClientPlugin,
             sanity::SanityPlugin,
         ))
+        .add_plugins(example_scene::ExampleScenePlugin)
         .add_event::<events::DamagePlayerEvent>()
         .run();
 }

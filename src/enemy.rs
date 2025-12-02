@@ -100,6 +100,7 @@ pub fn setup_enemy(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     lights: Res<Lights>,
+    sdf_texture: Res<crate::sdf_shadows::SdfTexture>,
 ) {
     let enemy_map = [
 [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],
@@ -228,6 +229,7 @@ pub fn setup_enemy(
                         lights: lights.lights,
                         normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                     })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 5.).with_scale(Vec3::splat(64.)),
                     Velocity::new(),
@@ -259,6 +261,7 @@ pub fn setup_enemy(
                         lights: lights.lights,
                         normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                     })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 5.).with_scale(Vec3::splat(48.)),
                     Velocity::new(),
@@ -290,6 +293,7 @@ pub fn setup_enemy(
                         lights: lights.lights,
                         normal: Some(asset_server.load("enemy/enemy_standard_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                     })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 5.).with_scale(Vec3::splat(80.)),
                     Velocity::new(),

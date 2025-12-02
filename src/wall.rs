@@ -45,6 +45,7 @@ pub fn build_walls_from_map(
     mut materials: ResMut<Assets<PlayerBaseMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     lights: Res<Lights>,
+    sdf_texture: Res<crate::sdf_shadows::SdfTexture>,
     ) {
     let map = [
 [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,25,0,25,0,25,0,25,0,25,0,25,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],
@@ -214,6 +215,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/water_barrel_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(64.)),
                     StaticCollider {
@@ -237,6 +239,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/desk_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32)+64., y_bound - (64. * y as f32), 1.).with_scale(Vec3::new(192.0, 176.0, 1.0)),//.with_rotation(Quat::from_rotation_z(2.*FRAC_PI_2)),
                     StaticCollider {
@@ -260,6 +263,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/wood_chair_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(48.)),
                     ));
@@ -279,6 +283,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/lamp_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(64.)),
                     ));
@@ -298,6 +303,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/wastebin_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(64.)),
                     ));
@@ -317,6 +323,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/dumpster_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(128.)),
                     StaticCollider {
@@ -340,6 +347,7 @@ pub fn build_walls_from_map(
                         lights: lights.lights,
                         normal: Some(asset_server.load("textures/bed_normal.png")),
                         mesh_rotation: 0.0,
+                        sdf_texture: Some(sdf_texture.texture.clone()),
                         })),
                     Transform::from_xyz(-x_bound + (64. * x as f32), y_bound - (64. * y as f32), 1.).with_scale(Vec3::splat(64.)),
                     ));
