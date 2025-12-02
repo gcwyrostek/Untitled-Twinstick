@@ -33,11 +33,10 @@ impl Plugin for PlayerPlugin {
                 Update,
                 player_orientation.run_if(in_state(GameState::Playing)),
             )
-            /* .add_systems(
+            .add_systems(
                 Update,
                 drain_battery.run_if(in_state(GameState::Playing)),
-                
-            )*/
+            )
             .add_systems(
             Update,
             player_movement_from_history
@@ -625,7 +624,7 @@ pub fn drain_battery(
 
     for mut player in players.iter_mut() {
         // Drain battery
-        let drain_rate = 0.5;
+        let drain_rate = 10.0;
         player.charge = (player.charge as f32 - drain_rate * delta).max(0.0) as i32;
         // Update flashlight range.
         if let Some(flashlight_entity) = player.flashlight {

@@ -28,38 +28,25 @@ pub fn sanity_drain_system(
     mut sanity_timers: ResMut<SanityTimers>,
     mut players: Query<(Entity, &NetControl, &Player, &mut Sanity)>,
 ) {
+    const SANITY_DRAIN_RATE: f32 = 5.0; // Drain 5 sanity per second without flashlight
+    const SANITY_REGEN_RATE: f32 = 10.0; // Regenerate 10 sanity per second with flashlight
+    const MAX_SANITY: f32 = 100.0;
+
     for (entity, control, player, mut sanity) in players.iter_mut() {
         if control.get_type() != PlayerType::Local {
             continue;
         }
 
-        if player.charge <= 0 {
-            let mut found = false;
+        let delta = time.delta_secs();
 
-            for timer_entry in sanity_timers.timers.iter_mut() {
-                let timer_entity = timer_entry.0;
-                let timer = &mut timer_entry.1;
-                let start_sanity = timer_entry.2;
-
-                if timer_entity == entity {
-                    timer.tick(time.delta());
-                    let elapsed = timer.elapsed_secs();
-                    if elapsed >= 5.0 {
-                        sanity.current = 0.0;
-                    } else {
-                        sanity.current = start_sanity * (1.0 - elapsed / 5.0);
-                    }
-                    found = true;
-                    break;
-                }
-            }
-
-            if !found {
-                let new_timer = Timer::from_seconds(5.0, TimerMode::Once);
-                sanity_timers.timers.push((entity, new_timer, sanity.current));
-            }
-        } else {
+        if player.charge > 0 {
+            sanity.current = (sanity.current + SANITY_REGEN_RATE * delta).min(MAX_SANITY);
+            sanity.draining = false;
+            
             sanity_timers.timers.retain(|(timer_entity, _, _)| *timer_entity != entity);
+        } else {
+            sanity.current = (sanity.current - SANITY_DRAIN_RATE * delta).max(0.0);
+            sanity.draining = true;
         }
     }
 }
@@ -67,15 +54,15 @@ pub fn sanity_drain_system(
 
 pub fn sanity_death_system(
     mut writer: EventWriter<DamagePlayerEvent>,
-    players: Query<(Entity, &NetControl, &Sanity)>,
+    mut players: Query<(Entity, &NetControl, &mut Sanity)>,
 ) {
-    for (entity, control, sanity) in players.iter() {
+    for (entity, control, mut sanity) in players.iter_mut() {
         if control.get_type() != PlayerType::Local {
             continue;
         }
-        if sanity.current <= 0.0 {
-            // Just send a ton of damage to execute the player when sanity has depleted
-            writer.send(DamagePlayerEvent::new(entity, 9999));
+        if sanity.current <= 0.0 && sanity.draining {
+            writer.send(DamagePlayerEvent::new(entity, 100));
+            sanity.draining = false;
         }
     }
 }
