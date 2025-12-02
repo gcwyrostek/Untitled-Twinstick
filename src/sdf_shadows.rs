@@ -5,6 +5,7 @@ use crate::components::StaticCollider;
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::player_material::PlayerBaseMaterial;
+ use std::env;
 
 // texture size for the shadow map
 const SDF_TEXTURE_SIZE: u32 = 512;
@@ -20,8 +21,8 @@ pub struct SdfShadowsPlugin;
 impl Plugin for SdfShadowsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SdfTexture>()
-            .add_systems(Update, generate_sdf)
-            .add_systems(Update, update_material_sdf_textures);
+            .add_systems(Update, generate_sdf.run_if(sdf_disable))
+            .add_systems(Update, update_material_sdf_textures.run_if(sdf_disable));
     }
 }
 
@@ -165,4 +166,11 @@ fn update_material_sdf_textures(
     for (_, material) in materials.iter_mut() {
         material.sdf_texture = Some(sdf_texture.texture.clone());
     }
+}
+
+pub fn sdf_disable(
+
+) -> bool {
+    let args: Vec<String> = env::args().collect();
+    return !{args.len() > 2};
 }
