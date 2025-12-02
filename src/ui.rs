@@ -1,7 +1,7 @@
 use crate::{GameState, player::Player};
 use crate::inventory_ui::{setup_revive_ui, update_revive_ui};
 use crate::{
-    collectible::PlayerInventory, components::Health, events::DamagePlayerEvent,
+    collectible::PlayerInventory, components::Health, components::Sanity, events::DamagePlayerEvent,
     net_control::NetControl, player::LocalPlayer, player::player_damage,
 };
 use bevy::prelude::*;
@@ -12,6 +12,8 @@ impl Plugin for UIPlugin {
         app.add_systems(OnEnter(GameState::Playing), setup_ui)
             .add_systems(OnExit(GameState::Playing), cleanup_ui)
             .add_systems(Update, update_health_ui.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, update_sanity_ui.run_if(in_state(GameState::Playing)))
+            .add_systems(Update, update_battery_ui.run_if(in_state(GameState::Playing)))
             //.add_systems(Update, player_damage.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::Playing), setup_revive_ui)
             .add_systems(Update, update_revive_ui.run_if(in_state(GameState::Playing)))
@@ -23,7 +25,22 @@ impl Plugin for UIPlugin {
 pub struct HealthBar;
 
 #[derive(Component)]
+pub struct SanityBar;
+
+#[derive(Component)]
+struct SanityText;
+
+#[derive(Component)]
+struct BatteryText;
+
+#[derive(Component)]
 struct HealthUIRoot;
+
+#[derive(Component)]
+struct SanityUIRoot;
+
+#[derive(Component)]
+struct BatteryUIRoot;
 
 #[derive(Component)]
 struct AmmoUIRoot;
@@ -77,6 +94,52 @@ pub fn setup_ui(
             ));
         });
 
+    // Sanity text
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(HEALTH_BAR_W + 16.0),
+                top: Val::Px(8.0),
+                ..default()
+            },
+            SanityUIRoot,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("Sanity: 100/100"),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                SanityText,
+            ));
+        });
+
+    // Battery text
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(HEALTH_BAR_W + 16.0),
+                top: Val::Px(36.0), // Below sanity text
+                ..default()
+            },
+            BatteryUIRoot,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("Battery: 500/500"),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                BatteryText,
+            ));
+        });
+
     // Ammo text in the bottom-right corner
     // Initial text can be placeholder or empty until first update
     let ammo_string = "0/0".to_string();
@@ -116,6 +179,30 @@ pub fn update_health_ui(
     node.height = Val::Px(HEALTH_BAR_H * ratio);
 }
 
+pub fn update_sanity_ui(
+    local_player: Res<LocalPlayer>,
+    sanity_query: Query<&Sanity>,
+    mut sanity_text_q: Query<&mut Text, With<SanityText>>,
+) {
+    let Ok(mut text) = sanity_text_q.get_single_mut() else { return; };
+    let Ok(sanity) = sanity_query.get(local_player.entity) else { return; };
+
+    // Update the sanity text to show current value
+    **text = format!("Sanity: {:.0}/100", sanity.current);
+}
+
+pub fn update_battery_ui(
+    local_player: Res<LocalPlayer>,
+    player_query: Query<&Player>,
+    mut battery_text_q: Query<&mut Text, With<BatteryText>>,
+) {
+    let Ok(mut text) = battery_text_q.get_single_mut() else { return; };
+    let Ok(player) = player_query.get(local_player.entity) else { return; };
+
+    // Update the battery text to show current value
+    **text = format!("Battery: {}/500", player.charge);
+}
+
 /*
 pub fn player_damage(
     local_player: Res<LocalPlayer>,
@@ -145,14 +232,24 @@ pub fn player_damage(
 fn cleanup_ui(
     mut commands: Commands,
     health_query: Query<Entity, With<HealthUIRoot>>,
+    sanity_query: Query<Entity, With<SanityUIRoot>>,
+    battery_query: Query<Entity, With<BatteryUIRoot>>,
     ammo_query: Query<Entity, With<AmmoUIRoot>>,
 ) {
     for entity in &health_query {
-        commands.entity(entity).despawn();
+        commands.entity(entity).despawn_recursive();
+    }
+
+    for entity in &sanity_query {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    for entity in &battery_query {
+        commands.entity(entity).despawn_recursive();
     }
 
     for entity in &ammo_query {
-        commands.entity(entity).despawn();
+        commands.entity(entity).despawn_recursive();
     }
 }
 
