@@ -1,6 +1,6 @@
 #import bevy_sprite::mesh2d_vertex_output::VertexOutput
 
-const NUM_LIGHTS: i32 = 4;
+const NUM_LIGHTS: i32 = 5;
 @group(2) @binding(0) var<uniform> lights: array<Light, NUM_LIGHTS>; // <-- Put total number of lights there.
 @group(2) @binding(1) var<uniform> material_color: vec4<f32>;
 @group(2) @binding(2) var<uniform> lighting: Lighting;

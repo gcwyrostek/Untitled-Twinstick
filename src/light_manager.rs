@@ -3,7 +3,7 @@ use crate::{components::LightSource, player_material::PlayerBaseMaterial};
 use bevy::{prelude::*, render::render_resource::ShaderType};
 
 // Set number of total lights here, as well as in player_base.wgsl. Current limit of 4 light sources
-const NUM_LIGHTS: i32 = 4;
+const NUM_LIGHTS: i32 = 5;
 #[derive(Resource, Default)]
 pub struct Lights {
     pub num_lights: i32,
@@ -76,6 +76,14 @@ pub fn setup_lights(mut commands: Commands) {
         (
             transform,
             LightSource::new(transform.translation, 1.0, 500.0, 80, 0.0),
+        )
+    });
+
+    commands.spawn({
+        let transform = Transform::from_xyz(-2688., 2944., 0.);
+        (
+            transform,
+            LightSource::new(transform.translation, 5.0, 500.0, 0, 0.0),
         )
     });
 }
