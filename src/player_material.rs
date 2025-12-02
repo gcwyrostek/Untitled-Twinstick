@@ -19,7 +19,7 @@ pub struct Lighting {
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct PlayerBaseMaterial {
     #[uniform(0)]
-    pub lights: [Light; 4],
+    pub lights: [Light; 5],
 
     #[uniform(1)]
     pub color: LinearRgba,
