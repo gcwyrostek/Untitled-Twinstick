@@ -8,7 +8,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::thread;
 use std::env;
 
-const IP_CONST: &str = "127.0.0.1:2525";
+const IP_CONST: &str = "0.0.0.0:2525";
 const MAX_PLAYER: u8 = 4;
 
 #[derive(Resource)]
@@ -85,7 +85,7 @@ fn server_init(mut commands: Commands) {
         socket: UdpSocket::bind(newIP).expect("ERROR"),
     });
     commands.insert_resource(ServerMetrics::default());
-    commands.spawn((NetControl::new(true, PlayerType::Local, 0, Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 2525,)),),
+    commands.spawn((NetControl::new(true, PlayerType::Local, 0, Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 2525,)),),
                     Local,
     ),
 );
@@ -113,7 +113,7 @@ fn server_run(
             Ok((amt, src)) => {
                 //Server Receives Join Packet
                 if (buf[0] == 255) {
-                    //info!("{:?} + {:?} + {:?}", src, amt, buf);
+                    info!("Player joined from: {:?}", src);
                     if sm.player_count < MAX_PLAYER {
                         //Creates NetControl for connecting player
                         let tempNet = commands

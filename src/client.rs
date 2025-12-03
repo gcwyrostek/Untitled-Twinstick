@@ -12,11 +12,24 @@ use std::net::UdpSocket;
 use std::collections::HashMap;
 use std::env;
 
-const IP_CONST: &str = "127.0.0.1:";
+const IP_CONST: &str = "0.0.0.0:";
 
 #[derive(Resource)]
 pub struct SocketResource {
     socket: UdpSocket,
+}
+
+//Server IP
+#[derive(Resource, Clone)]
+pub struct ServerIP {
+    pub serverIP: String,
+}
+impl ServerIP {
+    pub fn new(ip: String) -> Self {
+        Self {
+            serverIP: ip,
+        }
+    }
 }
 
 pub struct ClientPlugin;
@@ -67,6 +80,7 @@ fn client_init(mut commands: Commands) {
         socket: UdpSocket::bind(newIP).expect("ERROR"),
     });
     commands.insert_resource(ClientMetrics::default());
+    commands.insert_resource(ServerIP::new("0.0.0.0".to_string()));
 }
 
 fn client_start(socket: ResMut<SocketResource>) {
@@ -81,6 +95,7 @@ fn client_close(mut commands: Commands) {
 
 fn client_connect(
     socket: ResMut<SocketResource>,
+    mut serverip: ResMut<ServerIP>,
     mut cm: ResMut<ClientMetrics>,
 ) {
     info!("In client connect, Starting Timer");
@@ -88,18 +103,18 @@ fn client_connect(
     let mut newIP = "".to_string();;
     if args.len() > 1 {
         newIP = args[1].to_owned() + ":2525";
+        serverip.serverIP = newIP.clone();
     }
     else
     {
-        newIP = "127.0.0.1:2525".to_string();
+        newIP = "0.0.0.0:2525".to_string();
+        serverip.serverIP = newIP.clone();
     }
+    //info!("{}", newIP);
     let mut buf = [0];
     cm.sw.tick(Duration::from_millis(1));
     cm.sw.reset();
-    socket
-        .socket
-        .send_to(&[255], newIP)
-        .expect("couldn't send data");
+    socket.socket.send_to(&[255], newIP.clone()).expect("couldn't send data");
 }
 
 fn client_run(
@@ -252,6 +267,7 @@ pub fn input_converter(
     socket: ResMut<SocketResource>,
     mut pl_cont: Query<(&mut NetControl, &mut Transform, &PlayerInventory), (With<NetControl>, With<Local>)>,
     mut cm: ResMut<ClientMetrics>,
+    serverip: ResMut<ServerIP>,
 )   {
         let mut input_result: u8 = 0;
         let (mut player, mut transform, inventory) = pl_cont.single_mut().expect("Client Player not found");
@@ -294,7 +310,7 @@ pub fn input_converter(
             //Send Input
             socket
                 .socket
-                .send_to(&[input_result, player.net_angle, cm.seq_num], "127.0.0.1:2525")
+                .send_to(&[input_result, player.net_angle, cm.seq_num], serverip.serverIP.clone())
                 .expect("couldn't send data");
 
             } else {
@@ -302,7 +318,7 @@ pub fn input_converter(
             cm.input_history[256] = seq;
             socket
                 .socket
-                .send_to(&cm.input_history, "127.0.0.1:2525")
+                .send_to(&cm.input_history, serverip.serverIP.clone())
                 .expect("couldn't send data");
             }
         } else {
