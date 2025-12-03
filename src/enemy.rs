@@ -10,7 +10,7 @@ use std::f32::consts;
 // Stats for different enemy types!
 const NORMAL_SPEED: f32 = 100.;
 const STRONG_SPEED: f32 = 100.;
-const FAST_SPEED: f32 = 600.;
+const FAST_SPEED: f32 = 400.;
 
 const NORMAL_HEALTH: i32 = 5;
 const STRONG_HEALTH: i32 = 10;

@@ -288,6 +288,7 @@ fn send_player_update(
     }
 
     for (mut i, mut history, mut inv) in p_net.iter_mut() {
+        if i.get_type() == PlayerType::Network {
             //Send player inventory  
             let mut out = [0;4];
             out[0] = 5;
@@ -295,10 +296,12 @@ fn send_player_update(
             let out_inv = inv.inv_to_bytes();
             out[2] = out_inv[0];
             out[3] = out_inv[1];
+            //info!("{:?}", i.get_addr().unwrap());
             socket
                 .socket
                 .send_to(&out, i.get_addr().unwrap())
                 .expect("couldn't send data");
+        }
 
         if roll_check[i.player_id as usize] {
             //i.rollback = false;

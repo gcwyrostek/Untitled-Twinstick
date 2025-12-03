@@ -107,7 +107,7 @@ fn client_connect(
     }
     else
     {
-        newIP = "0.0.0.0:2525".to_string();
+        newIP = "127.0.0.1:2525".to_string();
         serverip.serverIP = newIP.clone();
     }
     //info!("{}", newIP);
