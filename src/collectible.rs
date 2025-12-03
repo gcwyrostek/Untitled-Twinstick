@@ -111,7 +111,8 @@ impl PlayerInventory {
 
     pub fn inv_from_bytes(&mut self, inp:[u8;2]) {
         self.reserve = inp[1] as i32;
-        self.revive_kits = (inp[0] & 128) as i32;
+        self.revive_kits = ((inp[0] & 128) >> 7) as i32;
+        info!("{:08b}", inp[0]);
         self.magazine = (inp[0] & 127) as i32;
     }
 }
